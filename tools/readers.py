@@ -100,6 +100,7 @@ class ParquetReader(Reader):
         return self.table_path_mapping.keys()
 
     def read(self, ctx, table, relevant_cols=None, **kwargs):
+        # todo read from pyarrow and return the table
         pass
         # import dask_cudf
         #
