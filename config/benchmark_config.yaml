@@ -1,7 +1,7 @@
 # benchmark config yaml
 ### Please fill these accordingly
-data_dir: "/aux/benchmarks/bigbench/parquet_3gb"
-output_dir: "/aux/benchmarks/bigbench_out/"
+data_dir: "/aux/benchmarks/bigbench/"
+output_dir: "/aux/benchmarks/bigbench_out_cylon/"
 file_format: parquet
 output_filetype: parquet
 split_row_groups: False

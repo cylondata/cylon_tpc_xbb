@@ -14,14 +14,12 @@
 
 import sys
 
-
-from xbb_tools.utils import (
+from tools.utils import (
     benchmark,
     tpcxbb_argparser,
     run_query,
 )
-from xbb_tools.readers import build_reader
-
+from tools.readers import build_reader
 
 q07_HIGHER_PRICE_RATIO = 1.2
 # --store_sales date
@@ -34,8 +32,8 @@ q07_LIMIT = 10
 def create_high_price_items_df(item_df):
     grouped_item_df = (
         item_df[["i_category", "i_current_price"]]
-        .groupby(["i_category"])
-        .agg({"i_current_price": "mean"})
+            .groupby(["i_category"])
+            .agg({"i_current_price": "mean"})
     )
     grouped_item_df = grouped_item_df.rename(columns={"i_current_price": "avg_price"})
     grouped_item_df = grouped_item_df.reset_index(drop=False)
@@ -43,13 +41,13 @@ def create_high_price_items_df(item_df):
     item_df = item_df.merge(grouped_item_df)
     item_df = item_df[
         item_df["i_current_price"] > item_df["avg_price"] * q07_HIGHER_PRICE_RATIO
-    ].reset_index(drop=True)
+        ].reset_index(drop=True)
     high_price_items_df = item_df
     del item_df
     return high_price_items_df
 
 
-def read_tables(config):
+def read_tables(ctx, config):
     table_reader = build_reader(
         data_format=config["file_format"],
         basepath=config["data_dir"],
@@ -82,7 +80,21 @@ def read_tables(config):
     )
 
 
-def main(client, config):
+def main(ctx, config):
+    # (
+    #     item_df,
+    #     store_sales_df,
+    #     store_df,
+    #     date_dim_df,
+    #     customer_df,
+    #     customer_address_df,
+    # ) = benchmark(
+    #     read_tables,
+    #     config=config,
+    #     compute_result=config["get_read_time"],
+    #     dask_profile=config["dask_profile"],
+    # )
+
     (
         item_df,
         store_sales_df,
@@ -90,12 +102,7 @@ def main(client, config):
         date_dim_df,
         customer_df,
         customer_address_df,
-    ) = benchmark(
-        read_tables,
-        config=config,
-        compute_result=config["get_read_time"],
-        dask_profile=config["dask_profile"],
-    )
+    ) = read_tables(ctx, config)
 
     high_price_items_df = create_high_price_items_df(item_df)
     del item_df
@@ -152,10 +159,18 @@ def main(client, config):
 
 
 if __name__ == "__main__":
-    from xbb_tools.cluster_startup import attach_to_cluster
-    import cudf
-    import dask_cudf
+    # from tools.cluster_startup import attach_to_cluster
+    # import cudf
+    # import dask_cudf
 
     config = tpcxbb_argparser()
-    client, bc = attach_to_cluster(config)
-    run_query(config=config, client=client, query_func=main)
+    # client, bc = attach_to_cluster(config)
+    # run_query(config=config, client=client, query_func=main)
+
+    from pycylon import CylonContext
+    from pycylon.net import MPIConfig
+
+    mpi_config = MPIConfig()
+    ctx: CylonContext = CylonContext(config=mpi_config, distributed=True)
+
+    main(ctx, config)
