@@ -1,8 +1,10 @@
 # benchmark config yaml
 ### Please fill these accordingly
-data_dir: "/aux/benchmarks/bigbench/"
+#data_dir: "/aux/benchmarks/bigbench/"
+data_dir: "/aux/benchmarks/bigbench/data"
 output_dir: "/aux/benchmarks/bigbench_out_cylon/"
 file_format: parquet
+#file_format: csv
 output_filetype: parquet
 split_row_groups: False
 repartition_small_table: True

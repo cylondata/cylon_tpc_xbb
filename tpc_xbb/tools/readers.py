@@ -16,8 +16,12 @@ import os
 
 import pycylon as cn
 from pycylon import Table
-from pycylon.data.io import read_csv, CSVReadOptions
-from pycylon.frame import DataFrame
+# from pycylon.io import read_csv, CSVReadOptions
+# from pycylon.frame import DataFrame
+
+import pyarrow
+from pyarrow.csv import read_csv as pa_read_csv
+from pyarrow.csv import ReadOptions, ParseOptions, ConvertOptions
 
 TABLE_NAMES = [
     "customer",
@@ -71,6 +75,22 @@ SUPER_SMALL_TABLES = [
     "reason",
     "store",
 ]
+
+spark_schema_dir = f"{os.getcwd()}/../../spark_table_schemas/"
+
+
+def get_schema(table):
+    with open(f"{spark_schema_dir}{table}.schema") as fp:
+        schema = fp.read()
+        names = [line.replace(",", "").split()[0] for line in schema.split("\n")]
+        types = [
+            line.replace(",", "").split()[1].replace("bigint", "int").replace("string", "str")
+            for line in schema.split("\n")
+        ]
+        types = [
+            col_type.split("(")[0].replace("decimal", "float") for col_type in types
+        ]
+        return names, types
 
 
 class Reader(ABC):
@@ -146,16 +166,31 @@ class CSVReader(Reader):
 
     # TODO
     def __init__(self, basepath, rank, file_type="dat"):
-        self.table_path_mapping = {
-            table: os.path.join(basepath, table, f"*{rank}.{file_type}") for table in TABLE_NAMES
-        }
+        if rank != None:
+            self.table_path_mapping = {
+                table: os.path.join(basepath, table, f"$TABLE_{rank + 1}.{file_type}") for table in
+                TABLE_NAMES
+            }
+        else:
+            self.table_path_mapping = {
+                table: os.path.join(basepath, table, f"$TABLE.{file_type}") for table in
+                TABLE_NAMES
+            }
 
     def read(self, ctx, table, relevant_cols=None, **kwargs):
-        filepath = self.table_path_mapping[table]
-        csv_read_options = CSVReadOptions().use_threads(True).block_size(1 << 30)
-        t: Table = read_csv(ctx, filepath, csv_read_options)
+        filepath = self.table_path_mapping[table].replace('$TABLE', table)
 
-        return DataFrame(t)
+        names, _ = get_schema(table)
+        # csv_read_options = CSVReadOptions().use_threads(True).block_size(1 << 30)
+        # .with_delimiter('|')
+        read_opts = ReadOptions(column_names=names, block_size=(1 << 30))
+        parse_opts = ParseOptions(delimiter='|')
+        convert_opts = ConvertOptions(include_columns=relevant_cols)
+
+        pa_table = pa_read_csv(filepath, read_options=read_opts, parse_options=parse_opts,
+                               convert_options=convert_opts)
+
+        return Table.from_arrow(ctx, pa_table)
 
     def show_tables(self):
         return self.table_path_mapping.keys()
