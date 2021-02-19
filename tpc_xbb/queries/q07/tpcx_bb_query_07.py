@@ -50,8 +50,7 @@ def create_high_price_items_df(ctx, item_df):
     """
     # item_df = ["i_item_sk", "i_current_price", "i_category"]
     grouped_item_df = item_df[["i_category", "i_current_price"]]. \
-        groupby(index_col=0, aggregate_cols=["i_current_price"],
-                aggregate_ops=[AggregationOp.MEAN])
+        groupby(index=0, agg={"i_current_price": 'mean'})
     # [i_category, i_current_price_mean]
 
     grouped_item_df.rename({"mean_i_current_price": "avg_price"})
@@ -152,12 +151,10 @@ def main(ctx, config):
         how="inner",
     )
     """
-    store_sales_df = store_sales_df.join(
-        filtered_date_df, join_type='inner', algorithm='sort',  # todo change to sort
+    store_sales_df = store_sales_df.distributed_join(
+        filtered_date_df, join_type='inner', algorithm='sort',
         left_on=["ss_sold_date_sk"],
-        right_on=["d_date_sk"],
-        how="inner",
-    )
+        right_on=["d_date_sk"], )
     # lt-ss_item_sk  lt-ss_customer_sk  lt-ss_sold_date_sk  rt-d_date_sk  rt-d_year  rt-d_moy
 
     # cols 2 keep after merge
@@ -178,7 +175,7 @@ def main(ctx, config):
     """
     store_sales_high_price_items_join_df = store_sales_df.distributed_join(
         high_price_items_df, join_type='inner', algorithm='sort', left_on=["ss_item_sk"],
-        right_on=["i_item_sk"], how="inner"
+        right_on=["i_item_sk"],
     )
     store_sales_high_price_items_join_df.rename(
         [x.split('-')[1] for x in store_sales_high_price_items_join_df.column_names])
@@ -191,7 +188,7 @@ def main(ctx, config):
     """
     store_sales_high_price_items_customer_join_df = store_sales_high_price_items_join_df \
         .distributed_join(customer_df, join_type='inner', algorithm='sort',
-                          left_on=["ss_customer_sk"], right_on=["c_customer_sk"], how="inner")
+                          left_on=["ss_customer_sk"], right_on=["c_customer_sk"], )
     store_sales_high_price_items_customer_join_df.rename(
         [x.split('-')[1] for x in store_sales_high_price_items_customer_join_df.column_names])
 
@@ -214,7 +211,7 @@ def main(ctx, config):
     """
     # todo this is inefficient. replace with a value count op
     count_df = final_merged_df[["ca_state", "ca_address_sk"]] \
-        .groupby(index_col=0, aggregate_cols=[1], aggregate_ops=[AggregationOp.COUNT])
+        .groupby(index=0, agg={1: AggregationOp.COUNT})
     count_df.rename(["ca_state", "cnt"])
 
     # number of states is limited=50
