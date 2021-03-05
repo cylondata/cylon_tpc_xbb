@@ -1,0 +1,107 @@
+from tpc_xbb.tools.readers import CSVReader
+from tpc_xbb.tools.utils import (
+    # benchmark,
+    tpcxbb_argparser,
+    # run_query,
+)
+
+
+def read_tables(ctx, config):
+    table_reader = CSVReader(config["data_dir"], rank=None)
+
+    ddim_columns = ["d_date_sk", "d_year", "d_moy"]
+
+    date_dim_table = table_reader.read(
+        ctx, "data_dim", relevant_cols=ddim_columns)
+
+    inv_columns = [
+        "inv_warehouse_sk",
+        "inv_item_sk",
+        "inv_date_sk",
+        "inv_quantity_on_hand",
+    ]
+
+    inventory_table = table_reader.read(
+        ctx, "inventory", relevant_cols=inv_columns)
+
+    return date_dim_table, inventory_table
+
+
+def main(ctx, config):
+    q23_year = 2001
+    q23_month = 1
+    q23_coefficient = 1.3
+
+    date_dim_table, inventory_table = read_tables(ctx, config)
+
+    # Query Set 1
+
+    inventory_data_dim_joined = inventory_table.distributed_join(
+        table=date_dim_table, join_type='inner', algorithm='sort', left_on=['inv_date_sk'], right_on=['d_date_sk'])
+
+    q23_month_plus_one = q23_month+1
+    inv_dates_result = inventory_data_dim_joined[(inventory_data_dim_joined['d_year'] == q23_year) & (
+        inventory_data_dim_joined['d_moy'] >= q23_month) & (inventory_data_dim_joined['d_moy'] <= q23_month_plus_one)]
+
+    print("Printing join results")
+    print(inv_dates_result[0:3])
+
+    # Query Set 2
+
+    grouped_inv_dates = inv_dates_result.groupby(["inv_warehouse_sk", "inv_item_sk", "d_moy"], {
+        "inv_quantity_on_hand": ["mean", "std"]
+    })
+
+    grouped_inv_dates = grouped_inv_dates.rename({
+        "mean_inv_quantity_on_hand": "qty_mean",
+        "std_inv_quantity_on_hand": "qty_std",
+    })
+
+    print("Aggregated table")
+    print(grouped_inv_dates[0:3])
+
+    # Query Set 3
+
+    grouped_inv_dates["qty_cov"] = (
+        grouped_inv_dates["qty_std"] / grouped_inv_dates["qty_mean"]
+    )
+
+    grouped_inv_dates_where = grouped_inv_dates[(
+        grouped_inv_dates["qty_cov"] > q23_coefficient)]
+
+    selected_columns = grouped_inv_dates_where[[
+        "inv_warehouse_sk", "inv_item_sk", "d_moy", "qty_cov"]]
+
+    # Final filtering
+
+    inv1_df = selected_columns[(selected_columns["d_moy"] == q23_month)]
+
+    inv2_df = selected_columns[(selected_columns["d_moy"] == q23_month+1)]
+
+    result_df = inv1_df.join(table=inv2_df,
+                             join_type='inner', algorithm='sort', left_on=['inv_warehouse_sk'], right_on=['inv_item_sk'])
+
+    result_df = result_df.rename({
+        "d_moy_x": "d_moy",
+        "d_moy_y": "inv2_d_moy",
+        "qty_cov_x": "cov",
+        "qty_cov_y": "inv2_cov",
+    })
+
+    result_df = result_df.sort(["inv_warehouse_sk", "inv_item_sk"])
+
+    # printing first 10 rows
+    print(result_df[0:10])
+
+
+if __name__ == "__main__":
+
+    config = tpcxbb_argparser()
+
+    from pycylon import CylonContext
+    from pycylon.net import MPIConfig
+
+    mpi_config = MPIConfig()
+    ctx: CylonContext = CylonContext(config=mpi_config, distributed=True)
+
+    main(ctx, config)
