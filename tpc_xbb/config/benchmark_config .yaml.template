@@ -1,8 +1,8 @@
 # benchmark config yaml
 ### Please fill these accordingly
 #data_dir: "/aux/benchmarks/bigbench/"
-data_dir: "/aux/benchmarks/bigbench/data"
-output_dir: "/aux/benchmarks/bigbench_out_cylon/"
+data_dir: "/path/to/data/"
+output_dir: "/path/to/ouput/"
 file_format: parquet
 #file_format: csv
 output_filetype: parquet
@@ -10,7 +10,7 @@ split_row_groups: False
 repartition_small_table: True
 benchmark_runner_include_bsql: False
 
-scheduler_file_path: "/home/niranda/dask-local-directory/scheduler.json"
+scheduler_file_path: "/path/to/scheduler.json"
 dask_profile: False
 dask_dir: ./
 num_workers: 1
