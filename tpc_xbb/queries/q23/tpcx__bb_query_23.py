@@ -12,7 +12,7 @@ def read_tables(ctx, config):
     ddim_columns = ["d_date_sk", "d_year", "d_moy"]
 
     date_dim_table = table_reader.read(
-        ctx, "data_dim", relevant_cols=ddim_columns)
+        ctx, "date_dim", relevant_cols=ddim_columns)
 
     inv_columns = [
         "inv_warehouse_sk",
@@ -52,13 +52,17 @@ def main(ctx, config):
         "inv_quantity_on_hand": ["mean", "std"]
     })
 
-    grouped_inv_dates = grouped_inv_dates.rename({
+    # todo remove this indeixng call
+    index_arr = [i for i in range(0, grouped_inv_dates.row_count)]
+    grouped_inv_dates.set_index(index_arr)
+
+    grouped_inv_dates.rename({
         "mean_inv_quantity_on_hand": "qty_mean",
         "std_inv_quantity_on_hand": "qty_std",
     })
 
     print("Aggregated table")
-    print(grouped_inv_dates[0:3])
+    print(grouped_inv_dates)
 
     # Query Set 3
 
@@ -79,16 +83,23 @@ def main(ctx, config):
     inv2_df = selected_columns[(selected_columns["d_moy"] == q23_month+1)]
 
     result_df = inv1_df.join(table=inv2_df,
-                             join_type='inner', algorithm='sort', left_on=['inv_warehouse_sk'], right_on=['inv_item_sk'])
+                             join_type='inner', algorithm='sort', left_on=['inv_warehouse_sk', 'inv_item_sk'], right_on=['inv_warehouse_sk', 'inv_item_sk'],
+                             left_prefix='l_', right_prefix='r_')
 
-    result_df = result_df.rename({
-        "d_moy_x": "d_moy",
-        "d_moy_y": "inv2_d_moy",
-        "qty_cov_x": "cov",
-        "qty_cov_y": "inv2_cov",
+    # todo remove this indeixng call
+    print("Before rename")
+    print(result_df[0:10])
+
+    index_arr = [i for i in range(0, result_df.row_count)]
+    result_df.set_index(index_arr)
+    result_df.rename({
+        "l_d_moy": "d_moy",
+        "r_d_moy": "inv2_d_moy",
+        "l_qty_cov": "cov",
+        "r_qty_cov": "inv2_cov",
     })
 
-    result_df = result_df.sort(["inv_warehouse_sk", "inv_item_sk"])
+    result_df = result_df.sort(["l_inv_warehouse_sk", "l_inv_item_sk"])
 
     # printing first 10 rows
     print(result_df[0:10])
