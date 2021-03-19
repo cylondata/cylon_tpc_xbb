@@ -1,2 +1,4 @@
 .vscode/
 **/__pycache__/
+
+tpc_xbb/config/benchmark_config .yaml

@@ -70,7 +70,7 @@ def get_tpcxbb_argparser_commandline_args():
     print("Using default arguments")
     parser.add_argument(
         "--config_file",
-        default="config/benchmark_config.yaml",
+        default="/home/chathura/code/cylon_tpc_xbb/tpc_xbb/config/benchmark_config .yaml",
         type=str,
         help="Location of benchmark configuration yaml file",
     )
