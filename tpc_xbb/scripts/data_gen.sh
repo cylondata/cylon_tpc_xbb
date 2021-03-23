@@ -75,11 +75,19 @@ for PARTS in 1 2 4 8; do
   echo "partitions $PARTS"
 
   for i in $(seq 1 $PARTS); do
+<<<<<<< HEAD
     /usr/bin/java -jar "$PDGF_DIR"/pdgf.jar -nc "$PARTS" -nn "$i" -ns -c -sp REFRESH_PHASE 0 -o "'$DATA_DIR/$PARTS/data/'+table.getName()+'/'" -workers $DATA_GEN_WORKERS -ap 3000 -s -sf $SCALE_F
   done
 
   for i in $(seq 1 $PARTS); do
     /usr/bin/java -jar "$PDGF_DIR"/pdgf.jar -nc "$PARTS" -nn "$i" -ns -c -sp REFRESH_PHASE 1 -o "'$DATA_DIR/$PARTS/data_refresh/'+table.getName()+'/'" -workers $DATA_GEN_WORKERS -ap 3000 -s -sf $SCALE_F
+=======
+    java -jar "$PDGF_DIR"/pdgf.jar -nc "$PARTS" -nn "$i" -ns -c -sp REFRESH_PHASE 0 -o "'${DATA_DIR}/${PARTS}/sf${SCALE_F}/data/'+table.getName()+'/'" -workers $DATA_GEN_WORKERS -ap 3000 -s -sf $SCALE_F
+  done
+
+  for i in $(seq 1 $PARTS); do
+    java -jar "$PDGF_DIR"/pdgf.jar -nc "$PARTS" -nn "$i" -ns -c -sp REFRESH_PHASE 1 -o "'${DATA_DIR}/${PARTS}/sf${SCALE_F}/data_refresh/'+table.getName()+'/'" -workers $DATA_GEN_WORKERS -ap 3000 -s -sf $SCALE_F
+>>>>>>> dc35b58825b66aa439f5d717de4dc557ea536405
   done
 
   echo "partitions $PARTS done!"
