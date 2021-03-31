@@ -76,7 +76,8 @@ def read_tables(ctx, config):
     #     split_row_groups=config["split_row_groups"],
     # )
     # table_reader = CSVReader(config["data_dir"], ctx.get_rank())
-    table_reader = CSVReader(config["data_dir"], rank=None)
+    table_reader = CSVReader(config["data_dir"],
+                             rank=None if ctx.get_rank() == 1 else ctx.get_rank())
 
     item_cols = ["i_item_sk", "i_current_price", "i_category"]
     store_sales_cols = ["ss_item_sk", "ss_customer_sk", "ss_sold_date_sk"]

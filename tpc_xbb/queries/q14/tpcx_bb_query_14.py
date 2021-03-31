@@ -16,7 +16,6 @@
 import numpy as np
 import sys
 
-
 from tpc_xbb.tools.readers import CSVReader
 from tpc_xbb.tools.utils import (
     tpcxbb_argparser
@@ -24,7 +23,8 @@ from tpc_xbb.tools.utils import (
 
 
 def read_tables(ctx, config):
-    table_reader = CSVReader(config["data_dir"], rank=None)
+    table_reader = CSVReader(config["data_dir"],
+                             rank=None if ctx.get_rank() == 1 else ctx.get_rank())
 
     ws_columns = ["ws_ship_hdemo_sk", "ws_web_page_sk", "ws_sold_time_sk"]
     web_sales = table_reader.read(ctx, "web_sales", relevant_cols=ws_columns)
@@ -44,7 +44,6 @@ def read_tables(ctx, config):
 
 
 def main(ctx, config):
-
     q14_dependents = 5
     q14_morning_startHour = 7
     q14_morning_endHour = 8
@@ -108,7 +107,7 @@ def main(ctx, config):
         (time_dim["t_hour"] == q14_morning_endHour) |
         (time_dim["t_hour"] == q14_evening_startHour) |
         (time_dim["t_hour"] == q14_evening_endHour)
-    ]
+        ]
 
     output_table = output_table.join(
         time_dim, left_on=["ws_sold_time_sk"], right_on=["t_time_sk"], join_type="inner",
@@ -118,11 +117,11 @@ def main(ctx, config):
     output_table = output_table.drop(["ws_sold_time_sk", "t_time_sk"])
 
     output_table["am"] = (output_table["t_hour"] >= q14_morning_startHour) & (
-        output_table["t_hour"] <= q14_morning_endHour
+            output_table["t_hour"] <= q14_morning_endHour
     )
 
     output_table["pm"] = (output_table["t_hour"] >= q14_evening_startHour) & (
-        output_table["t_hour"] <= q14_evening_endHour
+            output_table["t_hour"] <= q14_evening_endHour
     )
 
     # print("output_table")
@@ -132,7 +131,6 @@ def main(ctx, config):
     pm_trues = output_table[output_table["pm"] == True]
 
     am_pm_ratio = am_trues.row_count / pm_trues.row_count
-
 
     if np.isinf(am_pm_ratio):
         am_pm_ratio = -1.0

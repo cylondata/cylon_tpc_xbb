@@ -21,7 +21,8 @@ from tpc_xbb.tools.utils import (
 
 
 def read_tables(ctx, config):
-    table_reader = CSVReader(config["data_dir"], rank=None)
+    table_reader = CSVReader(config["data_dir"],
+                             rank=None if ctx.get_rank() == 1 else ctx.get_rank())
 
     ddim_columns = ["d_date_sk", "d_year", "d_moy"]
 
@@ -51,11 +52,14 @@ def main(ctx, config):
     # Query Set 1
 
     inventory_data_dim_joined = inventory_table.distributed_join(
-        table=date_dim_table, join_type='inner', algorithm='sort', left_on=['inv_date_sk'], right_on=['d_date_sk'])
+        table=date_dim_table, join_type='inner', algorithm='sort', left_on=['inv_date_sk'],
+        right_on=['d_date_sk'])
 
-    q23_month_plus_one = q23_month+1
-    inv_dates_result = inventory_data_dim_joined[(inventory_data_dim_joined['d_year'] == q23_year) & (
-        inventory_data_dim_joined['d_moy'] >= q23_month) & (inventory_data_dim_joined['d_moy'] <= q23_month_plus_one)]
+    q23_month_plus_one = q23_month + 1
+    inv_dates_result = inventory_data_dim_joined[
+        (inventory_data_dim_joined['d_year'] == q23_year) & (
+                inventory_data_dim_joined['d_moy'] >= q23_month) & (
+                    inventory_data_dim_joined['d_moy'] <= q23_month_plus_one)]
 
     print("Printing join results")
     print(inv_dates_result[0:3])
@@ -81,11 +85,11 @@ def main(ctx, config):
     # Query Set 3
 
     grouped_inv_dates["qty_cov"] = (
-        grouped_inv_dates["qty_std"] / grouped_inv_dates["qty_mean"]
+            grouped_inv_dates["qty_std"] / grouped_inv_dates["qty_mean"]
     )
 
     grouped_inv_dates_where = grouped_inv_dates[(
-        grouped_inv_dates["qty_cov"] > q23_coefficient)]
+            grouped_inv_dates["qty_cov"] > q23_coefficient)]
 
     selected_columns = grouped_inv_dates_where[[
         "inv_warehouse_sk", "inv_item_sk", "d_moy", "qty_cov"]]
@@ -94,10 +98,12 @@ def main(ctx, config):
 
     inv1_df = selected_columns[(selected_columns["d_moy"] == q23_month)]
 
-    inv2_df = selected_columns[(selected_columns["d_moy"] == q23_month+1)]
+    inv2_df = selected_columns[(selected_columns["d_moy"] == q23_month + 1)]
 
     result_df = inv1_df.join(table=inv2_df,
-                             join_type='inner', algorithm='sort', left_on=['inv_warehouse_sk', 'inv_item_sk'], right_on=['inv_warehouse_sk', 'inv_item_sk'],
+                             join_type='inner', algorithm='sort',
+                             left_on=['inv_warehouse_sk', 'inv_item_sk'],
+                             right_on=['inv_warehouse_sk', 'inv_item_sk'],
                              left_prefix='l_', right_prefix='r_')
 
     # todo remove this indeixng call
@@ -120,7 +126,6 @@ def main(ctx, config):
 
 
 if __name__ == "__main__":
-
     config = tpcxbb_argparser()
 
     from pycylon import CylonContext

@@ -37,12 +37,8 @@ q6_limit_rows = 100
 
 
 def read_tables(ctx, config):
-    # table_reader = build_reader(
-    #     data_format=config["file_format"],
-    #     basepath=config["data_dir"],
-    #     split_row_groups=config["split_row_groups"],
-    # )
-    table_reader = CSVReader(config["data_dir"], rank=None)
+    table_reader = CSVReader(config["data_dir"],
+                             rank=None if ctx.get_rank() == 1 else ctx.get_rank())
 
     web_sales_cols = [
         "ws_bill_customer_sk",

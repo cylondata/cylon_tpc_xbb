@@ -31,7 +31,8 @@ def inventory_before_after(df, date):
 
 
 def read_tables(ctx, config):
-    table_reader = CSVReader(config["data_dir"], rank=None)
+    table_reader = CSVReader(config["data_dir"],
+                             rank=None if ctx.get_rank() == 1 else ctx.get_rank())
 
     inv_columns = [
         "inv_item_sk",
@@ -56,7 +57,6 @@ def read_tables(ctx, config):
 
 
 def main(ctx, config):
-
     q22_date = "2001-05-08"
     q22_i_current_price_min = 0.98
     q22_i_current_price_max = 1.5
@@ -89,10 +89,12 @@ def main(ctx, config):
     max_date = np.datetime64(q22_date, "D").astype(int) + 30
 
     date_dim = date_dim[(
-        date_dim["d_date"] >= min_date) and (date_dim["d_date"] <= max_date)]
+                                date_dim["d_date"] >= min_date) and (
+                                    date_dim["d_date"] <= max_date)]
 
     output_table = output_table.join(
-        date_dim, left_on=["inv_date_sk"], right_on=["d_date_sk"], join_type='inner', algorithm='sort'
+        date_dim, left_on=["inv_date_sk"], right_on=["d_date_sk"], join_type='inner',
+        algorithm='sort'
     )
 
     keep_columns = ["i_item_id", "inv_quantity_on_hand",
@@ -127,13 +129,13 @@ def main(ctx, config):
     })
 
     output_table["inv_ratio"] = output_table["sum_inv_after"] / \
-        output_table["sum_inv_before"]
+                                output_table["sum_inv_before"]
 
     ratio_min = 2.0 / 3.0
     ratio_max = 3.0 / 2.0
 
     output_table = output_table[(
-        (output_table["inv_ratio"] >= ratio_min) and (
+            (output_table["inv_ratio"] >= ratio_min) and (
             output_table["inv_ratio"] <= ratio_max)
     )]
 
