@@ -64,7 +64,7 @@ def create_high_price_items_df(ctx, item_df):
         item_df["lt-i_current_price"] > item_df["rt-avg_price"] * q07_HIGHER_PRICE_RATIO]
     # [lt-i_item_sk, lt-i_current_price, lt-i_category, rt-avg_price]
 
-    item_df.rename([x.split('-')[1] for x in item_df.column_names])
+    # item_df.rename([x.split('-')[1] for x in item_df.column_names])
 
     return item_df
 
@@ -165,7 +165,7 @@ def main(ctx, config):
     """
     store_sales_cols = ["lt-ss_item_sk", "lt-ss_customer_sk", "lt-ss_sold_date_sk"]
     store_sales_df = store_sales_df[store_sales_cols]
-    store_sales_df.rename([x.split('-')[1] for x in store_sales_cols])
+    # store_sales_df.rename([x.split('-')[1] for x in store_sales_cols])
     # ["ss_item_sk", "ss_customer_sk", "ss_sold_date_sk"]
 
     # Query 1. `store_sales` join `highPriceItems`1 q
@@ -178,8 +178,8 @@ def main(ctx, config):
         high_price_items_df, join_type='inner', algorithm='sort', left_on=["ss_item_sk"],
         right_on=["i_item_sk"],
     )
-    store_sales_high_price_items_join_df.rename(
-        [x.split('-')[1] for x in store_sales_high_price_items_join_df.column_names])
+    # store_sales_high_price_items_join_df.rename(
+    #     [x.split('-')[1] for x in store_sales_high_price_items_join_df.column_names])
 
     # Query 2. `Customer` Merge `store_sales_highPriceItems_join_df`
     """
@@ -190,8 +190,8 @@ def main(ctx, config):
     store_sales_high_price_items_customer_join_df = store_sales_high_price_items_join_df \
         .distributed_join(customer_df, join_type='inner', algorithm='sort',
                           left_on=["ss_customer_sk"], right_on=["c_customer_sk"], )
-    store_sales_high_price_items_customer_join_df.rename(
-        [x.split('-')[1] for x in store_sales_high_price_items_customer_join_df.column_names])
+    # store_sales_high_price_items_customer_join_df.rename(
+    #     [x.split('-')[1] for x in store_sales_high_price_items_customer_join_df.column_names])
 
     # Query 3. `store_sales_highPriceItems_customer_join_df` Merge `Customer Address`
     customer_address_df = customer_address_df[customer_address_df["ca_state"].notnull()]
@@ -204,7 +204,7 @@ def main(ctx, config):
     final_merged_df = store_sales_high_price_items_customer_join_df.distributed_join(
         customer_address_df, join_type='inner', algorithm='sort', left_on=["c_current_addr_sk"],
         right_on=["ca_address_sk"])
-    final_merged_df.rename([x.split('-')[1] for x in final_merged_df.column_names])
+    # final_merged_df.rename([x.split('-')[1] for x in final_merged_df.column_names])
 
     # Query 4. Final State Grouped Query
     """

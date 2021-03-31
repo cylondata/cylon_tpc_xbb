@@ -139,7 +139,7 @@ def main(ctx, config):
         date_dim, join_type="inner", algorithm='sort', left_on=["ss_sold_date_sk"],
         right_on=["d_date_sk"],
     )
-    output_table.rename([x.split('-')[1] for x in output_table.column_names])
+    # output_table.rename([x.split('-')[1] for x in output_table.column_names])
     # ss_quantity: int64
     # ss_sold_date_sk: int64
     # ss_addr_sk: int64
@@ -168,7 +168,7 @@ def main(ctx, config):
         store, join_type="inner", algorithm='sort', left_on=["ss_store_sk"], right_on=["s_store_sk"]
     )
     output_table = output_table.drop(["lt-ss_store_sk", "rt-s_store_sk"])
-    output_table.rename([x.split('-')[1] for x in output_table.column_names])
+    # output_table.rename([x.split('-')[1] for x in output_table.column_names])
     # ss_quantity: int64
     # ss_addr_sk: int64
     # ss_cdemo_sk: int64
@@ -187,7 +187,7 @@ def main(ctx, config):
                                                  join_type="inner", algorithm='sort',
                                                  left_on=["ss_cdemo_sk"],
                                                  right_on=["cd_demo_sk"], )
-    output_table.rename([x.split('-')[1] for x in output_table.column_names])
+    # output_table.rename([x.split('-')[1] for x in output_table.column_names])
     # ss_quantity: int64
     # ss_addr_sk: int64
     # ss_cdemo_sk: int64
@@ -271,7 +271,7 @@ def main(ctx, config):
                                                  right_on=["ca_address_sk"],
                                                  join_type="inner",
                                                  algorithm='sort')
-    output_table.rename([x.split('-')[1] for x in output_table.column_names])
+    # output_table.rename([x.split('-')[1] for x in output_table.column_names])
     """
     output_table = output_table[
         (
