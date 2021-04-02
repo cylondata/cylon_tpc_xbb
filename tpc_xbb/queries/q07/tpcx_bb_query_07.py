@@ -57,12 +57,13 @@ def create_high_price_items_df(ctx, item_df):
     # [i_category, avg_price]
 
     item_df = item_df.distributed_join(grouped_item_df, join_type='inner', algorithm='sort',
-                                       on=['i_category']).drop(['rt-i_category'])
-    # [lt-i_item_sk, lt-i_current_price, lt-i_category, rt-avg_price]
+                                       on=['i_category'], right_prefix="rt-").drop(['rt-i_category'])
+    item_df.rename({"rt-avg_price": "avg_price"})
+    # [i_item_sk, i_current_price, i_category, avg_price]
 
     item_df = item_df[
-        item_df["lt-i_current_price"] > item_df["rt-avg_price"] * q07_HIGHER_PRICE_RATIO]
-    # [lt-i_item_sk, lt-i_current_price, lt-i_category, rt-avg_price]
+        item_df["i_current_price"] > item_df["avg_price"] * q07_HIGHER_PRICE_RATIO]
+    # [i_item_sk, i_current_price, i_category, avg_price]
 
     # item_df.rename([x.split('-')[1] for x in item_df.column_names])
 
@@ -156,14 +157,14 @@ def main(ctx, config):
         filtered_date_df, join_type='inner', algorithm='sort',
         left_on=["ss_sold_date_sk"],
         right_on=["d_date_sk"], )
-    # lt-ss_item_sk  lt-ss_customer_sk  lt-ss_sold_date_sk  rt-d_date_sk  rt-d_year  rt-d_moy
+    # ss_item_sk  ss_customer_sk  ss_sold_date_sk  d_date_sk  d_year  d_moy
 
     # cols 2 keep after merge
     """
     store_sales_cols = ["ss_item_sk", "ss_customer_sk", "ss_sold_date_sk"]
     store_sales_df = store_sales_df[store_sales_cols]
     """
-    store_sales_cols = ["lt-ss_item_sk", "lt-ss_customer_sk", "lt-ss_sold_date_sk"]
+    store_sales_cols = ["ss_item_sk", "ss_customer_sk", "ss_sold_date_sk"]
     store_sales_df = store_sales_df[store_sales_cols]
     # store_sales_df.rename([x.split('-')[1] for x in store_sales_cols])
     # ["ss_item_sk", "ss_customer_sk", "ss_sold_date_sk"]
@@ -232,7 +233,6 @@ def main(ctx, config):
     sorted_df = count_df.sort(1, ascending=False)
 
     result_df = sorted_df[0:q07_LIMIT]
-    print(result_df)
 
     return result_df
 
@@ -252,4 +252,7 @@ if __name__ == "__main__":
     mpi_config = MPIConfig()
     ctx: CylonContext = CylonContext(config=mpi_config, distributed=True)
 
-    main(ctx, config)
+    res = main(ctx, config)
+    
+    if ctx.get_rank() == 0:
+        res.to_pandas().to_csv(f"{config['output_dir']}/q07_results.csv", index=False)
