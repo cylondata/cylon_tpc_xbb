@@ -5,4 +5,5 @@ setup(
     version="0.1",
     author="cylon",
     packages=["cylon_xbb_tools"],
+    install_requires=["pyyaml"],
 )

@@ -24,7 +24,7 @@ from cylon_xbb_tools.utils import (
 
 def read_tables(ctx, config):
     table_reader = CSVReader(config["data_dir"],
-                             rank=None if ctx.get_rank() == 1 else ctx.get_rank())
+                             rank=None if ctx.get_world_size() == 1 else ctx.get_rank())
 
     ws_columns = ["ws_ship_hdemo_sk", "ws_web_page_sk", "ws_sold_time_sk"]
     web_sales = table_reader.read(ctx, "web_sales", relevant_cols=ws_columns)

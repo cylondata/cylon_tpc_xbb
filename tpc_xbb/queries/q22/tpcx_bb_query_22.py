@@ -31,7 +31,7 @@ def inventory_before_after(df, date):
 
 def read_tables(ctx, config):
     table_reader = CSVReader(config["data_dir"],
-                             rank=None if ctx.get_rank() == 1 else ctx.get_rank())
+                             rank=None if ctx.get_world_size() == 1 else ctx.get_rank())
 
     inv_columns = [
         "inv_item_sk",

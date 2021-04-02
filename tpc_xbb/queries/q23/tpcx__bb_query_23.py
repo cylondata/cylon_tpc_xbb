@@ -22,7 +22,7 @@ from cylon_xbb_tools.utils import (
 
 def read_tables(ctx, config):
     table_reader = CSVReader(config["data_dir"],
-                             rank=None if ctx.get_rank() == 1 else ctx.get_rank())
+                             rank=None if ctx.get_world_size() == 1 else ctx.get_rank())
 
     ddim_columns = ["d_date_sk", "d_year", "d_moy"]
 

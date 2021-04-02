@@ -77,7 +77,7 @@ def read_tables(ctx, config):
     # )
     # table_reader = CSVReader(config["data_dir"], ctx.get_rank())
     table_reader = CSVReader(config["data_dir"],
-                             rank=None if ctx.get_rank() == 1 else ctx.get_rank())
+                             rank=None if ctx.get_world_size() == 1 else ctx.get_rank())
 
     item_cols = ["i_item_sk", "i_current_price", "i_category"]
     store_sales_cols = ["ss_item_sk", "ss_customer_sk", "ss_sold_date_sk"]
