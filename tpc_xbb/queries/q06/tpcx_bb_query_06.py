@@ -23,12 +23,12 @@ import sys
 # )
 # from xbb_tools.readers import build_reader
 # from distributed import wait
-from tpc_xbb.tools.utils import (
+from cylon_xbb_tools.utils import (
     # benchmark,
     tpcxbb_argparser,
     # run_query,
 )
-from tpc_xbb.tools.readers import CSVReader
+from cylon_xbb_tools.readers import CSVReader
 
 import pycylon as cn
 

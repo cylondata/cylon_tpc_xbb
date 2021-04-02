@@ -17,12 +17,12 @@
 # from dask.distributed import Client
 # import sys
 
-from tpc_xbb.tools.utils import (
+from cylon_xbb_tools.utils import (
     # benchmark,
     tpcxbb_argparser,
     # run_query,
 )
-from tpc_xbb.tools.readers import CSVReader
+from cylon_xbb_tools.readers import CSVReader
 
 
 def read_tables(ctx, config):

@@ -11,17 +11,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##
-from abc import ABC, abstractmethod
 import os
+from abc import ABC, abstractmethod
 
-import pycylon as cn
+from pyarrow.csv import ReadOptions, ParseOptions, ConvertOptions
+from pyarrow.csv import read_csv as pa_read_csv
 from pycylon import Table
+
 # from pycylon.io import read_csv, CSVReadOptions
 # from pycylon.frame import DataFrame
-
-import pyarrow
-from pyarrow.csv import read_csv as pa_read_csv
-from pyarrow.csv import ReadOptions, ParseOptions, ConvertOptions
 
 TABLE_NAMES = [
     "customer",

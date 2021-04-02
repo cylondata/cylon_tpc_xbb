@@ -12,8 +12,8 @@
 # limitations under the License.
 ##
 
-from tpc_xbb.tools.readers import CSVReader
-from tpc_xbb.tools.utils import (
+from cylon_xbb_tools.readers import CSVReader
+from cylon_xbb_tools.utils import (
     # benchmark,
     tpcxbb_argparser,
     # run_query,

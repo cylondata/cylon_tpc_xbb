@@ -12,36 +12,8 @@
 # limitations under the License.
 ##
 
-import inspect
-import os
-import shutil
-import socket
-import re
 import argparse
-import time
-import subprocess
-from datetime import datetime
-from collections.abc import Iterable
-import glob
-# import dask
-import traceback
 import yaml
-import sys
-from collections import OrderedDict
-from collections.abc import MutableMapping
-
-import numpy as np
-
-import pandas as pd
-# import dask.dataframe as dd
-# from dask.utils import parse_bytes
-# from dask_cuda import LocalCUDACluster
-# from dask.distributed import Client, wait, performance_report, SSHCluster
-
-import json
-
-# import gspread
-# from oauth2client.service_account import ServiceAccountCredentials
 
 
 def add_empty_config(args):
@@ -70,7 +42,7 @@ def get_tpcxbb_argparser_commandline_args():
     print("Using default arguments")
     parser.add_argument(
         "--config_file",
-        default="/home/chathura/code/cylon_tpc_xbb/tpc_xbb/config/benchmark_config .yaml",
+        default="/home/chathura/code/tpc_xbb/tpc_xbb/config/benchmark_config.yaml",
         type=str,
         help="Location of benchmark configuration yaml file",
     )

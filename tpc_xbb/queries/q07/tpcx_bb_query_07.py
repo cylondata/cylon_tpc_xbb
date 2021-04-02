@@ -12,12 +12,12 @@
 # limitations under the License.
 ##
 
-from tpc_xbb.tools.utils import (
+from cylon_xbb_tools.utils import (
     # benchmark,
     tpcxbb_argparser,
     # run_query,
 )
-from tpc_xbb.tools.readers import CSVReader
+from cylon_xbb_tools.readers import CSVReader
 
 from pycylon import Table
 from pycylon.data.aggregates import AggregationOp
@@ -238,7 +238,7 @@ def main(ctx, config):
 
 
 if __name__ == "__main__":
-    # from tools.cluster_startup import attach_to_cluster
+    # from cylon_xbb_tools.cluster_startup import attach_to_cluster
     # import cudf
     # import dask_cudf
 

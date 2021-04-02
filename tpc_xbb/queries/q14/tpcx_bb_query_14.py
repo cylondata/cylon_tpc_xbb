@@ -16,8 +16,8 @@
 import numpy as np
 import sys
 
-from tpc_xbb.tools.readers import CSVReader
-from tpc_xbb.tools.utils import (
+from cylon_xbb_tools.readers import CSVReader
+from cylon_xbb_tools.utils import (
     tpcxbb_argparser
 )
 
