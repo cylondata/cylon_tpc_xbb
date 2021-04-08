@@ -10,12 +10,19 @@ parser.add_argument('-q', '--queries', type=int, nargs='+',
                     help='queries', default=[6, 7, 9, 14, 22, 23])
 parser.add_argument('--home_dir', type=str, help='cylon_tpc_home',
                     default=f"{os.getenv('HOME')}/victor/git/cylon_tpc_xbb")
+parser.add_argument('--mpi_params', type=str, help='mpi params',
+                    default="-mca btl vader,tcp,openib,self \
+                            -mca btl_tcp_if_include enp175s0f0 \
+                            --mca btl_openib_allow_ib 1 \
+                            --map-by node --bind-to core --bind-to socket")
+parser.add_argument('--config_template', type=str, help='config template path',
+                    default=None)
 
 
-mpi_params = "-mca btl vader,tcp,openib,self \
-            -mca btl_tcp_if_include enp175s0f0 \
-            --mca btl_openib_allow_ib 1 \
-            --map-by node --bind-to core --bind-to socket" #--report-bindings
+# mpi_params = "-mca btl vader,tcp,openib,self \
+#             -mca btl_tcp_if_include enp175s0f0 \
+#             --mca btl_openib_allow_ib 1 \
+#             --map-by node --bind-to core --bind-to socket" #--report-bindings
 
 
 def replace_bench_config_yaml(src, dest, workers):
@@ -30,17 +37,21 @@ def main(_args):
     cwd = os.getcwd()
     cylon_tpc_home = _args['home_dir']
     config_path = f"{cylon_tpc_home}/tpc_xbb/config/benchmark_config.yaml"
-    
+
+    config_template_path = _args['config_template'] if _args['config_template'] is not None \
+        else f"{cylon_tpc_home}/tpc_xbb/scripts/cylon_benchmark_config.yaml.temp"
+
     print("python_exec:", python_exec)
     print("config_path:", config_path)
+    print("config_template_path:", config_template_path)
 
     for w in _args['workers']:
-        replace_bench_config_yaml(f"{cylon_tpc_home}/tpc_xbb/scripts/cylon_benchmark_config.yaml.temp", config_path, w)
+        replace_bench_config_yaml(config_template_path, config_path, w)
 
         for q in _args['queries']:
             print(f"query {q} starting")
 
-            exec_str = f"mpirun {mpi_params} -np {w} {python_exec} " \
+            exec_str = f"mpirun {_args['mpi_params']} -np {w} {python_exec} " \
                        f"{cylon_tpc_home}/tpc_xbb/queries/q{q:02}/tpcx_bb_query_{q:02}.py " \
                        f"--config_file={config_path}"
 

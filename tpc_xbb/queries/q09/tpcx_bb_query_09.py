@@ -50,9 +50,8 @@ def read_tables(ctx, config):
     customer_address = table_reader.read(ctx, "customer_address", relevant_cols=ca_columns)
 
     cd_columns = ["cd_demo_sk", "cd_marital_status", "cd_education_status"]
-    customer_demographics_1part = table_reader.read(ctx,
-                                              "customer_demographics", relevant_cols=cd_columns
-                                              )
+    customer_demographics_1part = table_reader.read(ctx, "customer_demographics",
+                                                    relevant_cols=cd_columns)
 
     dd_columns = ["d_year", "d_date_sk"]
     date_dim_1part = table_reader.read(ctx, "date_dim", relevant_cols=dd_columns)
@@ -318,7 +317,7 @@ def main(ctx, config):
         )
         | (
                 (output_table["ca_country"] == q09_part3_ca_country)
-                & (output_table["ca_state"].isin(q09_part2_ca_state_IN))
+                & (output_table["ca_state"].isin(q09_part3_ca_state_IN))
                 & (output_table["ss_net_profit"] >= q09_part3_net_profit_min)
                 & (output_table["ss_net_profit"] <= q09_part3_net_profit_max)
         )
@@ -364,5 +363,8 @@ if __name__ == "__main__":
 
     if ctx.get_rank() == 0:
         import os
+
         os.makedirs(config['output_dir'], exist_ok=True)
         res.to_pandas().to_csv(f"{config['output_dir']}/q09_results.csv", index=False)
+
+    ctx.finalize()
