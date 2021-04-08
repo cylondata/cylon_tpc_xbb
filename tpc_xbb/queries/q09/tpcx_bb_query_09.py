@@ -167,7 +167,7 @@ def main(ctx, config):
     output_table = output_table.distributed_join(
         store, join_type="inner", algorithm='sort', left_on=["ss_store_sk"], right_on=["s_store_sk"]
     )
-    output_table = output_table.drop(["lt-ss_store_sk", "rt-s_store_sk"])
+    output_table = output_table.drop(["ss_store_sk", "s_store_sk"])
     # output_table.rename([x.split('-')[1] for x in output_table.column_names])
     # ss_quantity: int64
     # ss_addr_sk: int64
@@ -360,4 +360,9 @@ if __name__ == "__main__":
     mpi_config = MPIConfig()
     ctx: CylonContext = CylonContext(config=mpi_config, distributed=True)
 
-    main(ctx, config)
+    res = main(ctx, config)
+
+    if ctx.get_rank() == 0:
+        import os
+        os.makedirs(config['output_dir'], exist_ok=True)
+        res.to_pandas().to_csv(f"{config['output_dir']}/q09_results.csv", index=False)
