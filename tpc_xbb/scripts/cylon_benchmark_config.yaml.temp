@@ -1,0 +1,8 @@
+# benchmark config yaml
+### Please fill these accordingly
+data_dir: "/scratch/dnperera/bigbench/WWW/sf1/data"
+output_dir: "/scratch/dnperera/bigbench/cylon/WWW/sf1/results"
+file_format: csv
+output_filetype: csv
+
+

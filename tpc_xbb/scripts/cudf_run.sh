@@ -29,7 +29,7 @@ stop_dask() {
 }
 
 replace_bech_config_yaml() {
-  sed "s/WWW/$1/g" benchmark_config.yaml.temp >"$GPU_BDB_HOME"/gpu_bdb/benchmark_runner/benchmark_config.yaml
+  sed "s/WWW/$1/g" cudf_benchmark_config.yaml.temp >"$GPU_BDB_HOME"/gpu_bdb/benchmark_runner/benchmark_config.yaml
 
   echo "------benchmark_config.yaml-----"
   cat "$GPU_BDB_HOME"/gpu_bdb/benchmark_runner/benchmark_config.yaml

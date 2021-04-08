@@ -15,7 +15,7 @@ import os
 from abc import ABC, abstractmethod
 
 from pyarrow.csv import ReadOptions, ParseOptions, ConvertOptions
-from pyarrow import read_csv as pa_read_csv
+from pyarrow.csv import read_csv as pa_read_csv
 from pyarrow import concat_tables as pa_concat_tables
 from pycylon import Table
 
@@ -187,6 +187,7 @@ class CSVReader(Reader):
     # TODO
     def __init__(self, basepath, rank, file_type="dat"):
         if rank is not None:
+            self.table_path_mapping = {}
             for t in TABLE_NAMES:
                 # if table has only 1 partition, all ranks will load it!
                 if t in SINGLE_PARTITION_TABLES:

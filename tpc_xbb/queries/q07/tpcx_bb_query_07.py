@@ -255,4 +255,8 @@ if __name__ == "__main__":
     res = main(ctx, config)
     
     if ctx.get_rank() == 0:
+        import os
+        os.makedirs(config['output_dir'], exist_ok=True)
         res.to_pandas().to_csv(f"{config['output_dir']}/q07_results.csv", index=False)
+    
+    ctx.finalize()
