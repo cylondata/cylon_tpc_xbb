@@ -26,7 +26,7 @@ def read_tables(ctx, config):
 
     ddim_columns = ["d_date_sk", "d_year", "d_moy"]
 
-    date_dim_table = table_reader.read(
+    date_dim_table_1part = table_reader.read(
         ctx, "date_dim", relevant_cols=ddim_columns)
 
     inv_columns = [
@@ -39,7 +39,7 @@ def read_tables(ctx, config):
     inventory_table = table_reader.read(
         ctx, "inventory", relevant_cols=inv_columns)
 
-    return date_dim_table, inventory_table
+    return date_dim_table_1part, inventory_table
 
 
 def main(ctx, config):
@@ -47,12 +47,12 @@ def main(ctx, config):
     q23_month = 1
     q23_coefficient = 1.3
 
-    date_dim_table, inventory_table = read_tables(ctx, config)
+    date_dim_table_1part, inventory_table = read_tables(ctx, config)
 
     # Query Set 1
 
-    inventory_data_dim_joined = inventory_table.distributed_join(
-        table=date_dim_table, join_type='inner', algorithm='sort', left_on=['inv_date_sk'],
+    inventory_data_dim_joined = inventory_table.join(
+        table=date_dim_table_1part, join_type='inner', algorithm='sort', left_on=['inv_date_sk'],
         right_on=['d_date_sk'])
 
     q23_month_plus_one = q23_month + 1

@@ -30,7 +30,7 @@ def read_tables(ctx, config):
     web_sales = table_reader.read(ctx, "web_sales", relevant_cols=ws_columns)
 
     hd_columns = ["hd_demo_sk", "hd_dep_count"]
-    household_demographics = table_reader.read(ctx,
+    household_demographics_1part = table_reader.read(ctx,
                                                "household_demographics", relevant_cols=hd_columns
                                                )
 
@@ -38,9 +38,9 @@ def read_tables(ctx, config):
     web_page = table_reader.read(ctx, "web_page", relevant_cols=wp_columns)
 
     td_columns = ["t_time_sk", "t_hour"]
-    time_dim = table_reader.read(ctx, "time_dim", relevant_cols=td_columns)
+    time_dim_1part = table_reader.read(ctx, "time_dim", relevant_cols=td_columns)
 
-    return web_sales, household_demographics, web_page, time_dim
+    return web_sales, household_demographics_1part, web_page, time_dim_1part
 
 
 def main(ctx, config):
@@ -52,7 +52,7 @@ def main(ctx, config):
     q14_content_len_min = 5000
     q14_content_len_max = 6000
 
-    web_sales, household_demographics, web_page, time_dim = read_tables(
+    web_sales, household_demographics_1part, web_page, time_dim_1part = read_tables(
         ctx, config)
 
     # print("web sales")
@@ -67,14 +67,14 @@ def main(ctx, config):
     # print("time_dim")
     # print(time_dim[0:10])
 
-    household_demographics = household_demographics[
+    household_demographics_1part = household_demographics_1part[
         ("hd_dep_count" == q14_dependents)
         # meta=household_demographics._meta,
         # local_dict={"q14_dependents": q14_dependents},
     ]
 
     output_table = web_sales.join(
-        household_demographics,
+        household_demographics_1part,
         left_on=["ws_ship_hdemo_sk"],
         right_on=["hd_demo_sk"],
         join_type="inner",
@@ -102,15 +102,15 @@ def main(ctx, config):
     output_table = output_table.drop(
         ["ws_web_page_sk", "wp_web_page_sk", "wp_char_count"])
 
-    time_dim = time_dim[
-        (time_dim["t_hour"] == q14_morning_startHour) |
-        (time_dim["t_hour"] == q14_morning_endHour) |
-        (time_dim["t_hour"] == q14_evening_startHour) |
-        (time_dim["t_hour"] == q14_evening_endHour)
+    time_dim_1part = time_dim_1part[
+        (time_dim_1part["t_hour"] == q14_morning_startHour) |
+        (time_dim_1part["t_hour"] == q14_morning_endHour) |
+        (time_dim_1part["t_hour"] == q14_evening_startHour) |
+        (time_dim_1part["t_hour"] == q14_evening_endHour)
         ]
 
     output_table = output_table.join(
-        time_dim, left_on=["ws_sold_time_sk"], right_on=["t_time_sk"], join_type="inner",
+        time_dim_1part, left_on=["ws_sold_time_sk"], right_on=["t_time_sk"], join_type="inner",
         algorithm="sort"
     )
 

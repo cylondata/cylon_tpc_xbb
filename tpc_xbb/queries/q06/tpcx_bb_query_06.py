@@ -70,10 +70,10 @@ def read_tables(ctx, config):
 
     ws_df = table_reader.read(ctx, "web_sales", relevant_cols=web_sales_cols)
     ss_df = table_reader.read(ctx, "store_sales", relevant_cols=store_sales_cols)
-    date_df = table_reader.read(ctx, "date_dim", relevant_cols=date_cols)
+    date_df_1part = table_reader.read(ctx, "date_dim", relevant_cols=date_cols)
     customer_df = table_reader.read(ctx, "customer", relevant_cols=customer_cols)
 
-    return ws_df, ss_df, date_df, customer_df
+    return ws_df, ss_df, date_df_1part, customer_df
 
 
 def get_sales_ratio(df, table="store_sales"):
@@ -169,21 +169,21 @@ def main(ctx, config):
         dask_profile=config["dask_profile"],
     )
     """
-    ws_df, ss_df, date_df, customer_df = read_tables(ctx, config)
+    ws_df, ss_df, date_df_1part, customer_df = read_tables(ctx, config)
 
     """
     filtered_date_df = date_df.query(
         f"d_year >= {q06_YEAR} and d_year <= {q06_YEAR+1}", meta=date_df._meta
     ).reset_index(drop=True)"""
-    filtered_date_df = date_df[
-        (date_df['d_year'] >= q06_YEAR) & (date_df['d_year'] <= (q06_YEAR + 1))]
+    filtered_date_df_1part = date_df_1part[
+        (date_df_1part['d_year'] >= q06_YEAR) & (date_df_1part['d_year'] <= (q06_YEAR + 1))]
 
     """
     web_sales_df = ws_df.merge(
         filtered_date_df, left_on="ws_sold_date_sk", right_on="d_date_sk", how="inner"
     )"""
-    web_sales_df = ws_df.distributed_join(
-        filtered_date_df, join_type="inner", algorithm='sort', left_on=["ws_sold_date_sk"],
+    web_sales_df = ws_df.join(
+        filtered_date_df_1part, join_type="inner", algorithm='sort', left_on=["ws_sold_date_sk"],
         right_on=["d_date_sk"])
     print(web_sales_df.to_arrow())
     # ws_bill_customer_sk: int64
@@ -266,8 +266,8 @@ def main(ctx, config):
     store_sales_df = ss_df.merge(
         filtered_date_df, left_on="ss_sold_date_sk", right_on="d_date_sk", how="inner"
     )"""
-    store_sales_df = ss_df.distributed_join(filtered_date_df, join_type="inner", algorithm='sort',
-                                            left_on=["ss_sold_date_sk"], right_on=["d_date_sk"])
+    store_sales_df = ss_df.join(filtered_date_df_1part, join_type="inner", algorithm='sort',
+                                left_on=["ss_sold_date_sk"], right_on=["d_date_sk"])
     print(store_sales_df.to_arrow())
     # store_sales_df.rename([x.split('-')[1] for x in store_sales_df.column_names])
     # ss_customer_sk: int64

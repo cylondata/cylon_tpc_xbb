@@ -90,7 +90,7 @@ def read_tables(ctx, config):
     item_df = table_reader.read(ctx, "item", relevant_cols=item_cols)
     store_sales_df = table_reader.read(ctx, "store_sales", relevant_cols=store_sales_cols)
     store_df = table_reader.read(ctx, "store", relevant_cols=store_cols)
-    date_dim_df = table_reader.read(ctx, "date_dim", relevant_cols=date_cols)
+    date_dim_df_1part = table_reader.read(ctx, "date_dim", relevant_cols=date_cols)
     customer_df = table_reader.read(ctx, "customer", relevant_cols=customer_cols)
     customer_address_df = table_reader.read(ctx, "customer_address",
                                             relevant_cols=customer_address_cols)
@@ -99,7 +99,7 @@ def read_tables(ctx, config):
         item_df,
         store_sales_df,
         store_df,
-        date_dim_df,
+        date_dim_df_1part,
         customer_df,
         customer_address_df,
     )
@@ -124,7 +124,7 @@ def main(ctx, config):
         item_df,
         store_sales_df,
         store_df,
-        date_dim_df,
+        date_dim_df_1part,
         customer_df,
         customer_address_df,
     ) = read_tables(ctx, config)
@@ -140,8 +140,8 @@ def main(ctx, config):
         f"d_year == {q07_YEAR} and d_moy == {q07_MONTH}", meta=date_dim_df._meta
     ).reset_index(drop=True)
     """
-    filtered_date_df = date_dim_df[
-        (date_dim_df['d_year'] == q07_YEAR) & (date_dim_df['d_moy'] == q07_MONTH)]
+    filtered_date_df_1part = date_dim_df_1part[
+        (date_dim_df_1part['d_year'] == q07_YEAR) & (date_dim_df_1part['d_moy'] == q07_MONTH)]
 
     # filtering store sales to above dates
     # ss_item_sk  ss_customer_sk  ss_sold_date_sk
@@ -153,8 +153,8 @@ def main(ctx, config):
         how="inner",
     )
     """
-    store_sales_df = store_sales_df.distributed_join(
-        filtered_date_df, join_type='inner', algorithm='sort',
+    store_sales_df = store_sales_df.join(
+        filtered_date_df_1part, join_type='inner', algorithm='sort',
         left_on=["ss_sold_date_sk"],
         right_on=["d_date_sk"], )
     # ss_item_sk  ss_customer_sk  ss_sold_date_sk  d_date_sk  d_year  d_moy
