@@ -56,13 +56,16 @@ def create_high_price_items_df(ctx, item_df):
     grouped_item_df.rename({"mean_i_current_price": "avg_price"})
     # [i_category, avg_price]
 
+    
+    # todo: this join has unbalanced work & can create empty tables 
     item_df = item_df.distributed_join(grouped_item_df, join_type='inner', algorithm='sort',
                                        on=['i_category'], right_prefix="rt-").drop(['rt-i_category'])
     item_df.rename({"rt-avg_price": "avg_price"})
     # [i_item_sk, i_current_price, i_category, avg_price]
-
-    item_df = item_df[
-        item_df["i_current_price"] > item_df["avg_price"] * q07_HIGHER_PRICE_RATIO]
+    
+    if item_df.row_count:
+        item_df = item_df[
+            item_df["i_current_price"] > item_df["avg_price"] * q07_HIGHER_PRICE_RATIO]
     # [i_item_sk, i_current_price, i_category, avg_price]
 
     # item_df.rename([x.split('-')[1] for x in item_df.column_names])

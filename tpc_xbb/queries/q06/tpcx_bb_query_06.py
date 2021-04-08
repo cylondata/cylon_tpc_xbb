@@ -137,9 +137,9 @@ def get_sales_ratio(df, table="store_sales"):
     # ws_ext_wholesale_cost: double
     # ws_ext_discount_amt: double
     # ws_ext_sales_price: double
-    # first_year_sales: double
+    # first_year_sales: double1
     # second_year_sales: double
-    print('first', df_f_year.row_count)
+#     print('first', df_f_year.row_count)
 
     df_s_year = df[second_year_flag]
     df_s_year['first_year_sales'] = 0.0
@@ -147,7 +147,7 @@ def get_sales_ratio(df, table="store_sales"):
                                       - df_s_year[f"{column_prefix}ext_wholesale_cost"]
                                       - df_s_year[f"{column_prefix}ext_discount_amt"]
                                       + df_s_year[f"{column_prefix}ext_sales_price"]) / 2
-    print('second', df_s_year.row_count)
+#     print('second', df_s_year.row_count)
     # ws_bill_customer_sk: int64
     # d_year: int64
     # ws_ext_list_price: double
@@ -185,7 +185,7 @@ def main(ctx, config):
     web_sales_df = ws_df.join(
         filtered_date_df_1part, join_type="inner", algorithm='sort', left_on=["ws_sold_date_sk"],
         right_on=["d_date_sk"])
-    print(web_sales_df.to_arrow())
+#     print(web_sales_df.to_arrow(), web_sales_df.row_count)
     # ws_bill_customer_sk: int64
     # ws_sold_date_sk: int64
     # ws_ext_list_price: double
@@ -214,7 +214,7 @@ def main(ctx, config):
                                               "ws_ext_wholesale_cost": "sum",
                                               "ws_ext_discount_amt": "sum",
                                               "ws_ext_sales_price": "sum"})
-    print(ws_grouped_df.to_arrow())
+#     print(ws_grouped_df.to_arrow())
     # ws_bill_customer_sk: int64
     # d_year: int64
     # sum_ws_ext_list_price: double
@@ -223,7 +223,7 @@ def main(ctx, config):
     # sum_ws_ext_sales_price: double
 
     ws_grouped_df.rename([x.replace('sum_', '') for x in ws_grouped_df.column_names])
-    print(ws_grouped_df.to_arrow())
+#     print(ws_grouped_df.to_arrow())
     # ws_bill_customer_sk: int64
     # d_year: int64
     # ws_ext_list_price: double
@@ -236,7 +236,10 @@ def main(ctx, config):
         get_sales_ratio, table="web_sales"
     )"""
     web_sales_ratio_df = get_sales_ratio(ws_grouped_df, table="web_sales")
-    print(web_sales_ratio_df.to_arrow())
+    
+    ws_grouped_df.to_pandas().to_csv("ws_grouped_df.csv")
+    web_sales_ratio_df.to_pandas().to_csv("web_sales_ratio_df.csv")
+#     print(web_sales_ratio_df, web_sales_ratio_df.row_count)
 
     """
     web_sales = (
@@ -249,6 +252,7 @@ def main(ctx, config):
     web_sales = web_sales_ratio_df.groupby(["ws_bill_customer_sk"],
                                            agg={"first_year_sales": "sum",
                                                 "second_year_sales": "sum"})
+    web_sales = web_sales[web_sales["sum_first_year_sales"] > 0]
     """
     web_sales = web_sales.rename(
         columns={
@@ -257,6 +261,7 @@ def main(ctx, config):
         }
     )
     """
+#     print(web_sales, web_sales.row_count)
     web_sales.rename({"sum_first_year_sales": "first_year_total_web",
                       "sum_second_year_sales": "second_year_total_web"})
     # ws_bill_customer_sk: int64
@@ -268,7 +273,7 @@ def main(ctx, config):
     )"""
     store_sales_df = ss_df.join(filtered_date_df_1part, join_type="inner", algorithm='sort',
                                 left_on=["ss_sold_date_sk"], right_on=["d_date_sk"])
-    print(store_sales_df.to_arrow())
+#     print(store_sales_df.to_arrow())
     # store_sales_df.rename([x.split('-')[1] for x in store_sales_df.column_names])
     # ss_customer_sk: int64
     # ss_sold_date_sk: int64
@@ -309,6 +314,8 @@ def main(ctx, config):
     )
     """
     store_sales_ratio_df = get_sales_ratio(ss_grouped_df, table="store_sales")
+#     print(store_sales_ratio_df, store_sales_ratio_df.row_count)
+
     # ss_customer_sk: int64
     # d_year: int64
     # ss_ext_list_price: double
@@ -336,6 +343,7 @@ def main(ctx, config):
     store_sales = store_sales_ratio_df.groupby(["ss_customer_sk"],
                                                agg={"first_year_sales": "sum",
                                                     "second_year_sales": "sum"})
+    store_sales = store_sales[store_sales["sum_first_year_sales"] > 0]
     store_sales.rename({"sum_first_year_sales": "first_year_total_store",
                         "sum_second_year_sales": "second_year_total_store"})
     # ss_customer_sk: int64
@@ -354,10 +362,12 @@ def main(ctx, config):
             sales_df["second_year_total_web"] / sales_df["first_year_total_web"]
     )
     """
+    print(store_sales)
     sales_df = web_sales.distributed_join(store_sales, join_type="inner", algorithm='sort',
                                           left_on=["ws_bill_customer_sk"],
                                           right_on=["ss_customer_sk"], )
     # sales_df.rename([x.split('-')[1] for x in sales_df.column_names])
+#     print(sales_df)
     sales_df["web_sales_increase_ratio"] = sales_df["second_year_total_web"] \
                                            / sales_df["first_year_total_web"]
     print(sales_df.to_arrow())
@@ -418,17 +428,19 @@ def main(ctx, config):
             ascending=False,
         )
     )"""
-
+    from pycylon.data.table import SortOptions
+    s = SortOptions(num_bins=1024, num_samples=128)
     result_df = sales_df.distributed_sort(order_by=["web_sales_increase_ratio",
                                                     "c_customer_sk",
                                                     "c_first_name",
                                                     "c_last_name",
                                                     "c_preferred_cust_flag",
                                                     "c_birth_country",
-                                                    "c_login"], ascending=False)
-
+                                                    "c_login"], ascending=False, sort_options=s)
+    print(ctx.get_rank(), result_df.row_count)
+    
     filtered_res = result_df[0:q6_limit_rows]
-    print(filtered_res)
+#     print(filtered_res)
     return filtered_res
 
 
@@ -448,4 +460,11 @@ if __name__ == "__main__":
     mpi_config = MPIConfig()
     ctx: CylonContext = CylonContext(config=mpi_config, distributed=True)
 
-    main(ctx, config)
+    res = main(ctx, config)
+    
+    if ctx.get_rank() == 0:
+        import os
+        os.makedirs(config['output_dir'], exist_ok=True)
+        res.to_pandas().to_csv(f"{config['output_dir']}/q06_results.csv", index=False)
+    
+    ctx.finalize()
