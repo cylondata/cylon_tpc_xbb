@@ -96,7 +96,7 @@ SINGLE_PARTITION_TABLES = [
     "time_dim",
 ]
 
-spark_schema_dir = f"{os.getcwd()}/../../spark_table_schemas/"
+spark_schema_dir = f"{os.getcwd()}/spark_table_schemas/"
 
 
 def get_schema(table):
