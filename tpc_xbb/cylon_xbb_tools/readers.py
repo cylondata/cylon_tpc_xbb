@@ -15,7 +15,8 @@ import os
 from abc import ABC, abstractmethod
 
 from pyarrow.csv import ReadOptions, ParseOptions, ConvertOptions
-from pyarrow.csv import read_csv as pa_read_csv
+from pyarrow import read_csv as pa_read_csv
+from pyarrow import concat_tables as pa_concat_tables
 from pycylon import Table
 
 # from pycylon.io import read_csv, CSVReadOptions
@@ -72,6 +73,27 @@ SUPER_SMALL_TABLES = [
     "warehouse",
     "reason",
     "store",
+]
+
+REFRESH_TABLES = [
+    "customer",
+    "customer_address",
+    "inventory",
+    "item",
+    "item_marketprices",
+    "product_reviews",
+    "store_returns",
+    "store_sales",
+    "web_clickstreams",
+    "web_returns",
+    "web_sales",
+]
+
+SINGLE_PARTITION_TABLES = [
+    "customer_demographics",
+    "date_dim",
+    "household_demographics",
+    "time_dim",
 ]
 
 spark_schema_dir = f"{os.getcwd()}/../../spark_table_schemas/"
@@ -164,11 +186,14 @@ class CSVReader(Reader):
 
     # TODO
     def __init__(self, basepath, rank, file_type="dat"):
-        if rank != None:
-            self.table_path_mapping = {
-                table: os.path.join(basepath, table, f"$TABLE_{rank + 1}.{file_type}") for table in
-                TABLE_NAMES
-            }
+        if rank is not None:
+            for t in TABLE_NAMES:
+                # if table has only 1 partition, all ranks will load it!
+                if t in SINGLE_PARTITION_TABLES:
+                    self.table_path_mapping[t] = os.path.join(basepath, t, f"$TABLE_1.{file_type}")
+                else:
+                    self.table_path_mapping[t] = os.path.join(basepath, t,
+                                                              f"$TABLE_{rank + 1}.{file_type}")
         else:
             self.table_path_mapping = {
                 table: os.path.join(basepath, table, f"$TABLE.{file_type}") for table in
@@ -185,8 +210,20 @@ class CSVReader(Reader):
         parse_opts = ParseOptions(delimiter='|')
         convert_opts = ConvertOptions(include_columns=relevant_cols)
 
-        pa_table = pa_read_csv(filepath, read_options=read_opts, parse_options=parse_opts,
-                               convert_options=convert_opts)
+        # if table is in refresh_tables list, read that table and concat
+        # NOTE: refresh tables have the same parallelism as its data tables
+        if table in REFRESH_TABLES:
+            data_table = pa_read_csv(filepath, read_options=read_opts, parse_options=parse_opts,
+                                     convert_options=convert_opts)
+            refresh_path = filepath.replace('/data/', '/data_refresh/')
+
+            refresh_table = pa_read_csv(refresh_path, read_options=read_opts,
+                                        parse_options=parse_opts, convert_options=convert_opts)
+
+            pa_table = pa_concat_tables([data_table, refresh_table])
+        else:
+            pa_table = pa_read_csv(filepath, read_options=read_opts, parse_options=parse_opts,
+                                   convert_options=convert_opts)
 
         return Table.from_arrow(ctx, pa_table)
 

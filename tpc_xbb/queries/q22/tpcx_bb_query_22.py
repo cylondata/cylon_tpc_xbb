@@ -50,9 +50,9 @@ def read_tables(ctx, config):
         ctx, "warehouse", relevant_cols=warehouse_columns)
 
     dd_columns = ["d_date_sk", "d_date"]
-    date_dim = table_reader.read(ctx, "date_dim", relevant_cols=dd_columns)
+    date_dim_1part = table_reader.read(ctx, "date_dim", relevant_cols=dd_columns)
 
-    return inventory, item, warehouse, date_dim
+    return inventory, item, warehouse, date_dim_1part
 
 
 def main(ctx, config):
@@ -60,7 +60,7 @@ def main(ctx, config):
     q22_i_current_price_min = 0.98
     q22_i_current_price_max = 1.5
 
-    inventory, item, warehouse, date_dim = read_tables(ctx, config)
+    inventory, item, warehouse, date_dim_1part = read_tables(ctx, config)
 
     item = item[(item["i_current_price"] >= q22_i_current_price_min) &
                 (item["i_current_price"] <= q22_i_current_price_max)]
@@ -80,19 +80,19 @@ def main(ctx, config):
 
     output_table = output_table.project(keep_columns)
 
-    date_dim["d_date"] = date_dim["d_date"].applymap(
+    date_dim_1part["d_date"] = date_dim_1part["d_date"].applymap(
         lambda x: x.astype("datetime64[s]").astype("int64") / 86400)
 
     # Filter limit in days
     min_date = np.datetime64(q22_date, "D").astype(int) - 30
     max_date = np.datetime64(q22_date, "D").astype(int) + 30
 
-    date_dim = date_dim[(
-                                date_dim["d_date"] >= min_date) and (
-                                    date_dim["d_date"] <= max_date)]
+    date_dim_1part = date_dim_1part[(
+                                date_dim_1part["d_date"] >= min_date) and (
+                                    date_dim_1part["d_date"] <= max_date)]
 
     output_table = output_table.join(
-        date_dim, left_on=["inv_date_sk"], right_on=["d_date_sk"], join_type='inner',
+        date_dim_1part, left_on=["inv_date_sk"], right_on=["d_date_sk"], join_type='inner',
         algorithm='sort'
     )
 

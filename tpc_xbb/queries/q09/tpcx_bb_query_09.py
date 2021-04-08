@@ -50,17 +50,17 @@ def read_tables(ctx, config):
     customer_address = table_reader.read(ctx, "customer_address", relevant_cols=ca_columns)
 
     cd_columns = ["cd_demo_sk", "cd_marital_status", "cd_education_status"]
-    customer_demographics = table_reader.read(ctx,
+    customer_demographics_1part = table_reader.read(ctx,
                                               "customer_demographics", relevant_cols=cd_columns
                                               )
 
     dd_columns = ["d_year", "d_date_sk"]
-    date_dim = table_reader.read(ctx, "date_dim", relevant_cols=dd_columns)
+    date_dim_1part = table_reader.read(ctx, "date_dim", relevant_cols=dd_columns)
 
     s_columns = ["s_store_sk"]
     store = table_reader.read(ctx, "store", relevant_cols=s_columns)
 
-    return store_sales, customer_address, customer_demographics, date_dim, store
+    return store_sales, customer_address, customer_demographics_1part, date_dim_1part, store
 
 
 def main(ctx, config):
@@ -117,8 +117,8 @@ def main(ctx, config):
     (
         store_sales,
         customer_address,
-        customer_demographics,
-        date_dim,
+        customer_demographics_1part,
+        date_dim_1part,
         store,
     ) = read_tables(ctx, config=config)
 
@@ -127,7 +127,7 @@ def main(ctx, config):
         "d_year==@q09_year", meta=date_dim._meta, local_dict={"q09_year": q09_year}
     ).reset_index(drop=True)
    """
-    date_dim = date_dim[date_dim['d_year'] == q09_year]
+    date_dim_1part = date_dim_1part[date_dim_1part['d_year'] == q09_year]
     # d_year: int64 d_date_sk: int64
 
     """
@@ -135,8 +135,8 @@ def main(ctx, config):
         date_dim, left_on=["ss_sold_date_sk"], right_on=["d_date_sk"], how="inner"
     )
     """
-    output_table = store_sales.distributed_join(
-        date_dim, join_type="inner", algorithm='sort', left_on=["ss_sold_date_sk"],
+    output_table = store_sales.join(
+        date_dim_1part, join_type="inner", algorithm='sort', left_on=["ss_sold_date_sk"],
         right_on=["d_date_sk"],
     )
     # output_table.rename([x.split('-')[1] for x in output_table.column_names])
@@ -183,10 +183,10 @@ def main(ctx, config):
         how="inner",
     )
     """
-    output_table = output_table.distributed_join(customer_demographics,
-                                                 join_type="inner", algorithm='sort',
-                                                 left_on=["ss_cdemo_sk"],
-                                                 right_on=["cd_demo_sk"], )
+    output_table = output_table.join(customer_demographics_1part,
+                                     join_type="inner", algorithm='sort',
+                                     left_on=["ss_cdemo_sk"],
+                                     right_on=["cd_demo_sk"], )
     # output_table.rename([x.split('-')[1] for x in output_table.column_names])
     # ss_quantity: int64
     # ss_addr_sk: int64
