@@ -31,8 +31,9 @@ def read_tables(ctx, config):
 
     hd_columns = ["hd_demo_sk", "hd_dep_count"]
     household_demographics_1part = table_reader.read(ctx,
-                                               "household_demographics", relevant_cols=hd_columns
-                                               )
+                                                     "household_demographics",
+                                                     relevant_cols=hd_columns
+                                                     )
 
     wp_columns = ["wp_web_page_sk", "wp_char_count"]
     web_page = table_reader.read(ctx, "web_page", relevant_cols=wp_columns)
@@ -80,6 +81,8 @@ def main(ctx, config):
         join_type="inner",
         algorithm="sort"
     )
+
+    print("####", output_table.row_count)
 
     # print("After join")
     # print(output_table[0:10])
@@ -137,6 +140,9 @@ def main(ctx, config):
 
     print(am_pm_ratio)
 
+    from pycylon import Table
+    return Table.from_pydict(ctx, {"am_pm_ratio": [am_pm_ratio]})
+
 
 if __name__ == "__main__":
     config = tpcxbb_argparser()
@@ -147,4 +153,12 @@ if __name__ == "__main__":
     mpi_config = MPIConfig()
     ctx: CylonContext = CylonContext(config=mpi_config, distributed=True)
 
-    main(ctx, config)
+    res = main(ctx, config)
+
+    if ctx.get_rank() == 0:
+        import os
+
+        os.makedirs(config['output_dir'], exist_ok=True)
+        res.to_pandas().to_csv(f"{config['output_dir']}/q14_results.csv", index=False)
+
+    ctx.finalize()
