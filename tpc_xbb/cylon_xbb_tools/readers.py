@@ -17,7 +17,7 @@ from abc import ABC, abstractmethod
 from pyarrow.csv import ReadOptions, ParseOptions, ConvertOptions
 from pyarrow.csv import read_csv as pa_read_csv
 from pyarrow import concat_tables as pa_concat_tables
-from pycylon import Table
+from pycylon import Table, DataFrame, CylonEnv
 
 # from pycylon.io import read_csv, CSVReadOptions
 # from pycylon.frame import DataFrame
@@ -117,7 +117,7 @@ class Reader(ABC):
     """Base class for TPCx-BB File Readers"""
 
     @abstractmethod
-    def read(self, ctx, filepath, **kwargs):
+    def read(self, env: CylonEnv, filepath: str, **kwargs) -> DataFrame:
         """"""
 
     @abstractmethod
@@ -201,7 +201,7 @@ class CSVReader(Reader):
                 TABLE_NAMES
             }
 
-    def read(self, ctx, table, relevant_cols=None, **kwargs):
+    def read(self, env: CylonEnv, table, relevant_cols=None, **kwargs) -> DataFrame:
         filepath = self.table_path_mapping[table].replace('$TABLE', table)
 
         names, _ = get_schema(table)
@@ -226,13 +226,13 @@ class CSVReader(Reader):
             pa_table = pa_read_csv(filepath, read_options=read_opts, parse_options=parse_opts,
                                    convert_options=convert_opts)
 
-        return Table.from_arrow(ctx, pa_table)
+        return DataFrame(Table.from_arrow(env.context, pa_table))
 
     def show_tables(self):
         return self.table_path_mapping.keys()
 
 
-def build_reader(basepath, data_format="parquet", **kwargs):
+def build_reader(basepath, data_format="parquet", **kwargs) -> Reader:
     assert data_format in ("csv", "parquet", "orc")
 
     if data_format in ("csv",):
