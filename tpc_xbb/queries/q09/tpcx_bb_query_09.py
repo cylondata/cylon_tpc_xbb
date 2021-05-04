@@ -14,8 +14,7 @@
 # limitations under the License.
 #
 
-# from dask.distributed import Client
-# import sys
+from typing import Iterable
 
 from cylon_xbb_tools.utils import (
     # benchmark,
@@ -23,16 +22,17 @@ from cylon_xbb_tools.utils import (
     # run_query,
 )
 from cylon_xbb_tools.readers import CSVReader
+from pycylon.net import MPIConfig
+from pycylon import CylonEnv, DataFrame
 
 
-def read_tables(ctx, config):
+def read_tables(env: CylonEnv, config) -> Iterable[DataFrame]:
     # table_reader = build_reader(
     #     data_format=config["file_format"],
     #     basepath=config["data_dir"],
     #     split_row_groups=config["split_row_groups"],
     # )
-    table_reader = CSVReader(config["data_dir"],
-                             rank=None if ctx.get_world_size() == 1 else ctx.get_rank())
+    table_reader = CSVReader(config["data_dir"], rank=None if env.world_size == 1 else env.rank)
 
     ss_columns = [
         "ss_quantity",
@@ -44,25 +44,25 @@ def read_tables(ctx, config):
         "ss_net_profit",
     ]
 
-    store_sales = table_reader.read(ctx, "store_sales", relevant_cols=ss_columns)
+    store_sales = table_reader.read(env, "store_sales", relevant_cols=ss_columns)
 
     ca_columns = ["ca_address_sk", "ca_country", "ca_state"]
-    customer_address = table_reader.read(ctx, "customer_address", relevant_cols=ca_columns)
+    customer_address = table_reader.read(env, "customer_address", relevant_cols=ca_columns)
 
     cd_columns = ["cd_demo_sk", "cd_marital_status", "cd_education_status"]
-    customer_demographics_1part = table_reader.read(ctx, "customer_demographics",
+    customer_demographics_1part = table_reader.read(env, "customer_demographics",
                                                     relevant_cols=cd_columns)
 
     dd_columns = ["d_year", "d_date_sk"]
-    date_dim_1part = table_reader.read(ctx, "date_dim", relevant_cols=dd_columns)
+    date_dim_1part = table_reader.read(env, "date_dim", relevant_cols=dd_columns)
 
     s_columns = ["s_store_sk"]
-    store = table_reader.read(ctx, "store", relevant_cols=s_columns)
+    store = table_reader.read(env, "store", relevant_cols=s_columns)
 
     return store_sales, customer_address, customer_demographics_1part, date_dim_1part, store
 
 
-def main(ctx, config):
+def main(env, config):
     # import cudf
 
     # Conf variables
@@ -119,7 +119,7 @@ def main(ctx, config):
         customer_demographics_1part,
         date_dim_1part,
         store,
-    ) = read_tables(ctx, config=config)
+    ) = read_tables(env, config=config)
 
     """
     date_dim = date_dim.query(
@@ -134,10 +134,9 @@ def main(ctx, config):
         date_dim, left_on=["ss_sold_date_sk"], right_on=["d_date_sk"], how="inner"
     )
     """
-    output_table = store_sales.join(
-        date_dim_1part, join_type="inner", algorithm='sort', left_on=["ss_sold_date_sk"],
-        right_on=["d_date_sk"],
-    )
+    output_table = store_sales.merge(date_dim_1part, how="inner", algorithm='sort',
+                                     left_on=["ss_sold_date_sk"], right_on=["d_date_sk"],
+                                     suffixes=('', ''))  # local 
     # output_table.rename([x.split('-')[1] for x in output_table.column_names])
     # ss_quantity: int64
     # ss_sold_date_sk: int64
@@ -163,9 +162,8 @@ def main(ctx, config):
     )
     output_table = output_table.drop(columns=["ss_store_sk", "s_store_sk"])
     """
-    output_table = output_table.distributed_join(
-        store, join_type="inner", algorithm='sort', left_on=["ss_store_sk"], right_on=["s_store_sk"]
-    )
+    output_table = output_table.merge(store, how="inner", algorithm='sort', left_on=["ss_store_sk"],
+                                      right_on=["s_store_sk"], suffixes=('', ''), env=env)
     output_table = output_table.drop(["ss_store_sk", "s_store_sk"])
     # output_table.rename([x.split('-')[1] for x in output_table.column_names])
     # ss_quantity: int64
@@ -182,10 +180,9 @@ def main(ctx, config):
         how="inner",
     )
     """
-    output_table = output_table.join(customer_demographics_1part,
-                                     join_type="inner", algorithm='sort',
-                                     left_on=["ss_cdemo_sk"],
-                                     right_on=["cd_demo_sk"], )
+    output_table = output_table.merge(customer_demographics_1part, how="inner", algorithm='sort',
+                                      left_on=["ss_cdemo_sk"], right_on=["cd_demo_sk"],
+                                      suffixes=('', ''))  # local
     # output_table.rename([x.split('-')[1] for x in output_table.column_names])
     # ss_quantity: int64
     # ss_addr_sk: int64
@@ -265,11 +262,9 @@ def main(ctx, config):
         right_on=["ca_address_sk"],
         how="inner",
     )"""
-    output_table = output_table.distributed_join(customer_address,
-                                                 left_on=["ss_addr_sk"],
-                                                 right_on=["ca_address_sk"],
-                                                 join_type="inner",
-                                                 algorithm='sort')
+    output_table = output_table.merge(customer_address, how="inner", algorithm='sort',
+                                      left_on=["ss_addr_sk"], right_on=["ca_address_sk"],
+                                      suffixes=('', ''), env=env)
     # output_table.rename([x.split('-')[1] for x in output_table.column_names])
     """
     output_table = output_table[
@@ -334,9 +329,9 @@ def main(ctx, config):
     result = result.compute()
     result_df = cudf.DataFrame({"sum(ss_quantity)": [result]})
     """
-    print(output_table.to_arrow())
+    # print(output_table.to_arrow())
 
-    result = output_table.sum("ss_quantity")
+    result = DataFrame(output_table.to_table().sum("ss_quantity"))
 
     result.rename(["sum(ss_quantity)"])
 
@@ -353,15 +348,12 @@ if __name__ == "__main__":
     # client, bc = attach_to_cluster(config)
     # run_query(config=config, client=client, query_func=main)
 
-    from pycylon import CylonContext
-    from pycylon.net import MPIConfig
-
     mpi_config = MPIConfig()
-    ctx: CylonContext = CylonContext(config=mpi_config, distributed=True)
+    ctx: CylonEnv = CylonEnv(config=mpi_config, distributed=True)
 
     res = main(ctx, config)
 
-    if ctx.get_rank() == 0:
+    if ctx.rank == 0:
         import os
 
         os.makedirs(config['output_dir'], exist_ok=True)
