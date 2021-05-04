@@ -72,7 +72,7 @@ def create_high_price_items_df(env: CylonEnv, item_df: DataFrame) -> DataFrame:
     return item_df
 
 
-def read_tables(env: CylonEnv, config):
+def read_tables(env: CylonEnv, config) -> Iterable[DataFrame]:
     # table_reader = build_reader(
     #     data_format=config["file_format"],
     #     basepath=config["data_dir"],
