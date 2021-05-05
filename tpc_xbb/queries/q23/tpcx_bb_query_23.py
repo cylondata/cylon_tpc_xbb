@@ -12,22 +12,26 @@
 # limitations under the License.
 ##
 
-from cylon_xbb_tools.readers import CSVReader
+from typing import Iterable
+
 from cylon_xbb_tools.utils import (
     # benchmark,
     tpcxbb_argparser,
     # run_query,
 )
+from cylon_xbb_tools.readers import CSVReader
+
+from pycylon.net import MPIConfig
+from pycylon import CylonEnv, DataFrame
 
 
-def read_tables(ctx, config):
-    table_reader = CSVReader(config["data_dir"],
-                             rank=None if ctx.get_world_size() == 1 else ctx.get_rank())
+def read_tables(env: CylonEnv, config) -> Iterable[DataFrame]:
+    table_reader = CSVReader(config["data_dir"], rank=None if env.world_size == 1 else env.rank)
 
     ddim_columns = ["d_date_sk", "d_year", "d_moy"]
 
     date_dim_table_1part = table_reader.read(
-        ctx, "date_dim", relevant_cols=ddim_columns)
+        env, "date_dim", relevant_cols=ddim_columns)
 
     inv_columns = [
         "inv_warehouse_sk",
@@ -36,42 +40,41 @@ def read_tables(ctx, config):
         "inv_quantity_on_hand",
     ]
 
-    inventory_table = table_reader.read(
-        ctx, "inventory", relevant_cols=inv_columns)
+    inventory_table = table_reader.read(env, "inventory", relevant_cols=inv_columns)
 
     return date_dim_table_1part, inventory_table
 
 
-def main(ctx, config):
+def main(env: CylonEnv, config) -> DataFrame:
     q23_year = 2001
     q23_month = 1
     q23_coefficient = 1.3
 
-    date_dim_table_1part, inventory_table = read_tables(ctx, config)
+    date_dim_table_1part, inventory_table = read_tables(env, config)
 
     # Query Set 1
 
-    inventory_data_dim_joined = inventory_table.join(
-        table=date_dim_table_1part, join_type='inner', algorithm='sort', left_on=['inv_date_sk'],
-        right_on=['d_date_sk'])
+    inventory_data_dim_joined = inventory_table.merge(date_dim_table_1part, how='inner',
+                                                      algorithm='sort', left_on=['inv_date_sk'],
+                                                      right_on=['d_date_sk'], suffixes=('', ''))
 
     q23_month_plus_one = q23_month + 1
     inv_dates_result = inventory_data_dim_joined[
         (inventory_data_dim_joined['d_year'] == q23_year) & (
                 inventory_data_dim_joined['d_moy'] >= q23_month) & (
-                    inventory_data_dim_joined['d_moy'] <= q23_month_plus_one)]
+                inventory_data_dim_joined['d_moy'] <= q23_month_plus_one)]
 
     print("Printing join results")
     print(inv_dates_result[0:3])
 
     # Query Set 2
 
-    grouped_inv_dates = inv_dates_result.groupby(["inv_warehouse_sk", "inv_item_sk", "d_moy"], {
-        "inv_quantity_on_hand": ["mean", "std"]
-    })
+    grouped_inv_dates = inv_dates_result.groupby(by=["inv_warehouse_sk", "inv_item_sk", "d_moy"],
+                                                 env=env) \
+        .agg({"inv_quantity_on_hand": ["mean", "std"]})
 
     # todo remove this indeixng call
-    index_arr = [i for i in range(0, grouped_inv_dates.row_count)]
+    index_arr = [i for i in range(0, len(grouped_inv_dates))]
     grouped_inv_dates.set_index(index_arr)
 
     grouped_inv_dates.rename({
@@ -100,17 +103,16 @@ def main(ctx, config):
 
     inv2_df = selected_columns[(selected_columns["d_moy"] == q23_month + 1)]
 
-    result_df = inv1_df.join(table=inv2_df,
-                             join_type='inner', algorithm='sort',
-                             left_on=['inv_warehouse_sk', 'inv_item_sk'],
-                             right_on=['inv_warehouse_sk', 'inv_item_sk'],
-                             left_prefix='l_', right_prefix='r_')
+    result_df = inv1_df.merge(inv2_df, how='inner', algorithm='sort',
+                              left_on=['inv_warehouse_sk', 'inv_item_sk'],
+                              right_on=['inv_warehouse_sk', 'inv_item_sk'],
+                              suffixes=('l_', 'r_'), env=env)
 
-    # todo remove this indeixng call
     print("Before rename")
     print(result_df[0:10])
 
-    index_arr = [i for i in range(0, result_df.row_count)]
+    # todo remove this indeixng call
+    index_arr = [i for i in range(0, len(result_df))]
     result_df.set_index(index_arr)
     result_df.rename({
         "l_d_moy": "d_moy",
@@ -119,19 +121,26 @@ def main(ctx, config):
         "r_qty_cov": "inv2_cov",
     })
 
-    result_df = result_df.sort(["l_inv_warehouse_sk", "l_inv_item_sk"])
+    result_df = result_df.sort_values(by=["l_inv_warehouse_sk", "l_inv_item_sk"], env=env)
 
     # printing first 10 rows
     print(result_df[0:10])
+
+    return result_df
 
 
 if __name__ == "__main__":
     config = tpcxbb_argparser()
 
-    from pycylon import CylonContext
-    from pycylon.net import MPIConfig
-
     mpi_config = MPIConfig()
-    ctx: CylonContext = CylonContext(config=mpi_config, distributed=True)
+    ctx: CylonEnv = CylonEnv(config=mpi_config, distributed=True)
 
-    main(ctx, config)
+    res = main(ctx, config)
+
+    if ctx.rank == 0:
+        import os
+
+        os.makedirs(config['output_dir'], exist_ok=True)
+        res.to_pandas().to_csv(f"{config['output_dir']}/q23_results.csv", index=False)
+
+    ctx.finalize()
