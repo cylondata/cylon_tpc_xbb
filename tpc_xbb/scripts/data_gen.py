@@ -35,14 +35,14 @@ def main(_args):
             for i in range(p):
                 exec_str = f"{JAVA_EXEC} -jar {pdgf_jar} -nc {p} -nn {i} -ns -c " \
                            f"-sp REFRESH_PHASE 0 " \
-                           f"-o '{_args['data_d']}/{p}/sf{s}/data/'+table.getName()+'/' " \
+                           f"-o \"'{_args['data_d']}/{p}/sf{s}/data/'+table.getName()+'/'\" " \
                            f"-workers {DATA_GEN_WORKERS} -ap 3000 -s -sf {s}"
                 run_cmd(exec_str)
 
             for i in range(p):
                 exec_str = f"{JAVA_EXEC} -jar {pdgf_jar} -nc {p} -nn {i} -ns -c " \
                            f"-sp REFRESH_PHASE 1 " \
-                           f"-o '{_args['data_d']}/{p}/sf{s}/data_refresh/'+table.getName()+'/' " \
+                           f"-o \"'{_args['data_d']}/{p}/sf{s}/data_refresh/'+table.getName()+'/'\" " \
                            f"-workers {DATA_GEN_WORKERS} -ap 3000 -s -sf {s}"
                 run_cmd(exec_str)
 
