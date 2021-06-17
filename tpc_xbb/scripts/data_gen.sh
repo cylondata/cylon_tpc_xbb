@@ -53,7 +53,9 @@
 #setProperty myProperty 1+Math.log(${SF})*1000
 #
 #-sf           <sf>
-#              Default scale factor ${SF} for the project. The property is mostly used to dynamically increase a tables size based on a formula. e.g.: '1000*${SF}'. By increasing the scale factor you also increase the number of generated rows of a table.
+#              Default scale factor ${SF} for the project.
+#              The property is mostly used to dynamically increase a tables size based on a formula. e.g.: '1000*${SF}'.
+#              By increasing the scale factor you also increase the number of generated rows of a table.
 #
 #-s            <tableName> <tableName:timeIDToStart>...(optional)
 #-start        Starts data generation on this node. Optionally you can limit the data generation to the specified table(s). All others tables will be excluded. If the timelineSimulator system is used, you can also add starting timeID to the table(s) name(s). Example to only generate the customer table starting at timeID 5: 's Customer:5'
@@ -66,20 +68,33 @@
 #
 #Note: some commands depend on other commands. For example: you can not start the datageneration if the config files are not loaded.
 
-SCALE_F=1
-PDGF_DIR="$HOME/romeo/git/TPCx-BB-kit-code-1.4.0/data-generator"
-DATA_DIR="$HOME/romeo/bigbench"
-DATA_GEN_WORKERS=1
+SCALE_F=100
+PDGF_DIR="../../tpcx-bb-1.5.0/data-generator"
+DATA_DIR="/scratch_hdd/auyar/bb_sf100"
+DATA_GEN_WORKERS=8
 
-for PARTS in 1 2 4 8; do
+# for PARTS in 1 2 4 8; do
+for PARTS in 1; do
   echo "partitions $PARTS"
 
   for i in $(seq 1 $PARTS); do
-    /usr/bin/java -jar "$PDGF_DIR"/pdgf.jar -nc "$PARTS" -nn "$i" -ns -c -sp REFRESH_PHASE 0 -o "'$DATA_DIR/$PARTS/data/'+table.getName()+'/'" -workers $DATA_GEN_WORKERS -ap 3000 -s -sf $SCALE_F
+    /usr/lib/jvm/java-1.7.0-openjdk-1.7.0.261-2.6.22.2.el7_8.x86_64/jre/bin/java \
+      -jar "$PDGF_DIR"/pdgf.jar \
+      -nc "$PARTS" \
+      -nn "$i" \
+      -ns -c -sp REFRESH_PHASE 0 -o "'$DATA_DIR/$PARTS/data/'+table.getName()+'/'" \
+      -workers $DATA_GEN_WORKERS \
+      -ap 3000 -s -sf $SCALE_F
   done
 
   for i in $(seq 1 $PARTS); do
-    /usr/bin/java -jar "$PDGF_DIR"/pdgf.jar -nc "$PARTS" -nn "$i" -ns -c -sp REFRESH_PHASE 1 -o "'$DATA_DIR/$PARTS/data_refresh/'+table.getName()+'/'" -workers $DATA_GEN_WORKERS -ap 3000 -s -sf $SCALE_F
+    /usr/lib/jvm/java-1.7.0-openjdk-1.7.0.261-2.6.22.2.el7_8.x86_64/jre/bin/java \
+    -jar "$PDGF_DIR"/pdgf.jar \
+    -nc "$PARTS" \
+    -nn "$i" \
+    -ns -c -sp REFRESH_PHASE 1 -o "'$DATA_DIR/$PARTS/data_refresh/'+table.getName()+'/'" \
+    -workers $DATA_GEN_WORKERS \
+    -ap 3000 -s -sf $SCALE_F
   done
 
   echo "partitions $PARTS done!"
