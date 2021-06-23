@@ -200,25 +200,6 @@ class CSVReader(Reader):
                 TABLE_NAMES
             }
 
-    def _chunked_read(self, filepath, column_names, relevant_cols):
-        # read every 10M rows as chunks
-        rows_to_read = 10000000
-        read_rows = rows_to_read
-        skip_rows = 0
-        read_tables_parts = []
-        while read_rows == rows_to_read:
-            part_table = cudf.read_csv(filepath,
-                                       names=column_names,
-                                       delimiter='|',
-                                       usecols=relevant_cols,
-                                       skiprows=skip_rows,
-                                       nrows=rows_to_read)
-            skip_rows += rows_to_read
-            read_rows = len(part_table.index)
-            read_tables_parts.append(part_table)
-
-        return cudf.concat(read_tables_parts)
-
     def read(self, env: gc.CylonEnv, table, relevant_cols=None, **kwargs) -> gc.DataFrame:
         filepath = self.table_path_mapping[table].replace('$TABLE', table)
 
@@ -227,11 +208,11 @@ class CSVReader(Reader):
         # if table is in refresh_tables list, read that table and concat
         # NOTE: refresh tables have the same parallelism as its data tables
         if table in REFRESH_TABLES:
-            data_table = self._chunked_read(filepath=filepath, column_names=column_names, relevant_cols=relevant_cols)
-            # data_table = cudf.read_csv(filepath,
-            #                            names=column_names,
-            #                            delimiter='|',
-            #                            usecols=relevant_cols)
+            data_table = cudf.read_csv(filepath,
+                                       names=column_names,
+                                       delimiter='|',
+                                       usecols=relevant_cols)
+#            print("has read the file:", filepath, "with rows:", len(data_table.index))
             refresh_path = filepath.replace('/data/', '/data_refresh/')
 
             refresh_table = cudf.read_csv(refresh_path,
@@ -242,7 +223,10 @@ class CSVReader(Reader):
             pa_table = gc.concat([gc.DataFrame.from_cudf(data_table), gc.DataFrame.from_cudf(refresh_table)])
         else:
             # read every 10M rows as chunks
-            pa_table = self._chunked_read(filepath=filepath, column_names=column_names, relevant_cols=relevant_cols)
+            pa_table = cudf.read_csv(filepath,
+                                     names=column_names,
+                                     delimiter='|',
+                                     usecols=relevant_cols)
 #            print("has read the file:", filepath, "with rows:", len(pa_table.index))
             pa_table = gc.DataFrame.from_cudf(pa_table)
 
