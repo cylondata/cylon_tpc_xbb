@@ -221,10 +221,24 @@ class CSVReader(Reader):
 
             pa_table = gc.concat([gc.DataFrame.from_cudf(data_table), gc.DataFrame.from_cudf(refresh_table)])
         else:
-            pa_table = cudf.read_csv(filepath,
-                                     names=column_names,
-                                     delimiter='|',
-                                     usecols=relevant_cols)
+            # read every 10M rows as chunks
+            rows_to_read = 10000000
+            read_rows = rows_to_read
+            skip_rows = 0
+            read_tables_parts = []
+            while read_rows == rows_to_read:
+                part_table = cudf.read_csv(filepath,
+                                         names=column_names,
+                                         delimiter='|',
+                                         usecols=relevant_cols,
+                                         skiprows=skip_rows,
+                                         nrows=rows_to_read)
+                skip_rows += rows_to_read
+                read_rows = len(part_table.index)
+                read_tables_parts.append(part_table)
+
+            pa_table = cudf.concat(read_tables_parts)
+#            print("has read the file:", filepath, "with rows:", len(pa_table.index))
             pa_table = gc.DataFrame.from_cudf(pa_table)
 
         return pa_table
