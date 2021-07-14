@@ -69,8 +69,8 @@
 #Note: some commands depend on other commands. For example: you can not start the datageneration if the config files are not loaded.
 
 SCALE_F=100
-PDGF_DIR="../../tpcx-bb-1.5.0/data-generator"
-DATA_DIR="/scratch_hdd/auyar/bb_sf100"
+PDGF_DIR="../../TPCx-BB/data-generator"
+DATA_DIR="../../data"
 DATA_GEN_WORKERS=8
 
 # for PARTS in 1 2 4 8; do
@@ -78,7 +78,7 @@ for PARTS in 1; do
   echo "partitions $PARTS"
 
   for i in $(seq 1 $PARTS); do
-    /usr/lib/jvm/java-1.7.0-openjdk-1.7.0.261-2.6.22.2.el7_8.x86_64/jre/bin/java \
+    $JAVA_HOME/bin/java \
       -jar "$PDGF_DIR"/pdgf.jar \
       -nc "$PARTS" \
       -nn "$i" \
@@ -88,7 +88,7 @@ for PARTS in 1; do
   done
 
   for i in $(seq 1 $PARTS); do
-    /usr/lib/jvm/java-1.7.0-openjdk-1.7.0.261-2.6.22.2.el7_8.x86_64/jre/bin/java \
+    $JAVA_HOME/bin/java \
     -jar "$PDGF_DIR"/pdgf.jar \
     -nc "$PARTS" \
     -nn "$i" \
